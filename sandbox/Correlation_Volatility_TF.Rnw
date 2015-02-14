@@ -1,0 +1,130 @@
+\documentclass[a4paper]{article}
+\usepackage[OT1]{fontenc}
+\usepackage{Sweave}
+\usepackage{Rd}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[round]{natbib}
+\usepackage{bm}
+\usepackage{verbatim}
+\usepackage[latin1]{inputenc}
+\bibliographystyle{abbrvnat}
+
+\let\proglang=\textsf
+%\newcommand{\pkg}[1]{{\fontseries{b}\selectfont #1}}
+%\newcommand{\R}[1]{{\fontseries{b}\selectfont #1}}
+%\newcommand{\email}[1]{\href{mailto:#1}{\normalfont\texttt{#1}}}
+%\newcommand{\E}{\mathsf{E}}
+%\newcommand{\VAR}{\mathsf{VAR}}
+%\newcommand{\COV}{\mathsf{COV}}
+%\newcommand{\Prob}{\mathsf{P}}
+
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\baselinestretch}{1.5}
+\setlength{\textwidth}{15cm} \setlength{\textheight}{22cm} \topmargin-1cm \evensidemargin0.5cm \oddsidemargin0.5cm
+
+\usepackage[latin1]{inputenc}
+% or whatever
+
+\usepackage{lmodern}
+\usepackage[T1]{fontenc}
+% Or whatever. Note that the encoding and the font should match. If T1
+% does not look nice, try deleting the line with the fontenc.
+
+\begin{document}
+
+\title{Estimating Volatilities and Correlations}
+\author{Thomas Fillebeen}
+
+\maketitle
+
+\begin{abstract}
+Using historical CRSP data to produce estimates of current and future levels of volatilies and correlations. The vignette explores exponentially weighted moving average (EWMA), and generealized autoregressive conditional heteroscedasticity (GARCH(1,1)). These models recognize that volatilities and correlations are not constant. The models attempt to track variations in volatilities or correlation and forecast them into the future.
+\end{abstract}
+
+\tableofcontents
+
+\section{EWMA Covariance and Correlation}
+\subsection{Selected Returns Time Series}
+<<ex1>>=
+# 'Load the GARPFRM package and CRSP dataset for analysis.
+suppressMessages(library(GARPFRM))
+suppressMessages(library(rugarch))
+suppressMessages(library(rmgarch))
+options(digits=4)
+
+data(crsp.short)
+R <- largecap.ts[, 1:4]
+@
+\subsection{Estimating Correlation and Volatility}
+<<ex2>>=
+# Remember: log-returns for GARCH analysis
+asset1 = R[,1] 
+asset2 = R[,3]
+   
+# Create combined data series
+cAssets = cbind(asset1,asset2)
+
+# Scatterplot of returns
+plot(coredata(asset1), coredata(asset2), xlab=colnames(asset1), 
+     ylab=colnames(asset2), main ="Scatterplot of Returns")
+abline(h=0,v=0,lty=3)
+@
+\subsection{EWMA Correlation and Volatility}
+<<ex3>>=
+# Calculate EWMA cov and cor, applying default lambda - 0.94
+cAssetsEWMACov <- EWMA(cAssets,lambda=0.94, initialWindow=50, cor=FALSE)
+cAssetsEWMACor <- EWMA(cAssets,lambda=0.94, initialWindow=50, cor=TRUE)
+
+# Plots
+par(mfrow=c(2,1))
+plot(cAssetsEWMACov,asset1=1,asset2=2)
+plot(cAssetsEWMACor, asset1=1,asset2=2)
+par(mfrow=c(1,1))
+
+# Compute EWMA cov and cor for longer half-life of 
+halfLife = log(0.5)/log(0.94) + 5
+lambda = exp(log(0.5)/halfLife)
+covEwma <- EWMA(cAssets, lambda)
+@
+
+\section{GARCH(1,1) Conditional Correlation and Variance}
+\subsection{GARCH(1,1) Estimation and Plotting}
+<<ex4>>=
+# Garch11 testing: need 100 plus data points to forecast. 
+# Load lengthier dataset.
+data(returns)
+cAssetsReturns = cbind(returns[, "SPY"],returns[,"AAPL"])
+# Dynamic Conditional Cor/Cov
+garch11 <- garch11(cAssetsReturns)
+
+# garch11 is a dcc.fit object. There are multiple extraction functions to be exploited.
+# Illustrate garch11, dcc.fit object.
+
+# Conditional Sigma (vs Realized Absolute Returns)
+plot(garch11, which=2)
+
+# Conditional covar of each series
+plot(garch11, which=3)
+
+# Conditional cor
+plot(garch11, which=4)
+@
+\subsection{Forecasting GARCH(1,1) Plotting}
+<<ex5>>=
+# Forecasting conditional vol and cor, default wd = 100
+fcstGarch11 = fcstGarch11(garch11,100)
+
+# Many method functions - see help on DCCforecast class
+# rshape, rskew, fitted, sigma, plot, rcor, rcov, show
+
+# Show forecasts
+fcstGarch11
+
+# Plot Conditional Covar Forecast 
+plot(fcstGarch11, which=3)
+@
+
+\end{document}

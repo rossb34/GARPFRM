@@ -1,0 +1,353 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{Estimating Volatility and Correlation}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+opts_chunk$set(cache=TRUE, tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{Estimating Volatilities and Correlation}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate methods for estimating volatility and correlation as outlined in Chapter 10 of Foundations of Risk Management.
+\end{abstract}
+
+\tableofcontents
+
+\section{Estimating Volatility}
+We define $\sigma_n$ as the volatility on day $n$, as estimated at the end of day $n-1$. This section describes the standard approach to estimating $\sigma_n$ from historical data.
+
+First we define the continuously compounded return between the end of day $i-1$ and the end of day $i$.
+
+\begin{equation}
+u_i = \ln \frac{S_i}{S_{i-1}}
+\end{equation}
+where:
+\begin{description}
+  \item[$S_i$] is the value of the market variable at the end of day $i$ (e.g. asset prices)
+\end{description}
+
+An unbiased estimate of the variance rate per day on day $n$, $\sigma_n^2$, using the $m$ most recent observations is
+
+\begin{equation}
+\sigma_n^2 = \frac{1}{m-1} \sum_{i=1}^m (u_{n-1} - \bar{u})^2
+\end{equation}
+
+where $\bar{u}$ is the mean of $u_i$ for $i = {1, 2, ..., m}$
+\begin{equation}
+\bar{u} = \frac{1}{m} \sum_{i=1}^m u_{n-1}
+\end{equation}
+
+A few changes can be made to simplify the equation for monitoring daily volatility.
+\begin{enumerate}
+  \item define $u_i$ as the percentage change in the market variable between the end of day $i-1$ and the end of day $i$.
+  \begin{equation}
+  u_i = \frac{S_i - S_{i-1}}{S_i}
+  \end{equation}
+  \item Assume $\bar{u}$ to be zero
+  \item Replace $m-1$ with $m$
+\end{enumerate}
+
+These changes simplify the formula for the variance rate to
+\begin{equation}
+\sigma_n^2 = \frac{1}{m} \sum_{i=1}^m u_{n-1}^2
+\end{equation}
+
+This equation gives equal weight to each of the previous $m$ observations. A model that allows one to assign weights to the previous observations is
+\begin{equation}
+\sigma_n^2 = \sum_{i=1}^m \alpha_i u_{n-1}^2
+\end{equation}
+
+Where $\alpha_i$ is the weight given to the observation $i$ days ago.
+
+A special case of equation is the Exponentially Weighted Moving Average (EWMA) Model.
+
+\section{Exponentially Weighted Moving Average Model}
+The Exponentially Weighted Moving Average (EWMA) Model is a special case of a weighted moving average where the weights $\alpha_i$ decrease exponentially as we move backwards through time. Greater weights are given to more recent observations.
+
+This weighting scheme leads to simple formula for updating volatility estimates. The predictive version of the variance rate of day $n$ is given as
+
+\begin{equation}
+\hat{\sigma}_n^2 = \lambda \hat{\sigma}_{n-1}^2 + (1 - \lambda) u_{n-1}^2
+\end{equation}
+
+where:
+\begin{description}
+  \item[$\hat{\sigma}_{n-1}^2$] is the estimated variance rate of period $n-1$
+  \item[$u_{n-1}^2$] is the squared return of preiod $n-1$
+  \item[$\lambda$] is a constant between 0 and 1
+\end{description}
+
+The value for $\lambda$ determines how responsive the volatility estimate is to the most recent percentage change, $u_{n-1}$. A lower (higher) value for $\lambda$ leads to a greater (lesser) weight given to $u_{n-1}$. One way to think of this is that values of $\lambda$ close to 1 produce volatility estimates that respond relatively slow to new information coming into the market provided by $u_{n-1}$.
+
+Load the package and data. Unless noted otherwise, the weekly returns of Microsoft (MSFT) will be used as the asset return data.
+<<>>=
+suppressPackageStartupMessages(library(GARPFRM))
+data(crsp_weekly)
+
+# Use the weekly MSFT returns
+R <- largecap_weekly[, "MSFT"]
+@
+
+Here we calculate the volatility estimates of the MSFT weekly returns using the EWMA model. We choose \code{lambda=0.94}. The RiskMetrics database, originally created by J.P. Morgan and made publicly available in 1994, uses the EWMA model with $\lambda = 0.94$ for updating daily volatility in its RiskMetrics database. An \code{initialWindow=15} is specified to use the first 15 periods to calculate the initial conditions, $u_0$ and $\sigma_0$. 
+
+<<>>=
+lambda <- 0.94
+initialWindow <- 15
+volEst <- EWMA(R, lambda, initialWindow, type="volatility")
+volEst
+@
+
+An important point to note is that we are using weekly returns to estimate weekly volatility while the lambda value used in the RiskMetrics database is for daily volatility estimates. A data driven approach for selecting a value for $\lambda$ is to determine the $\lambda$ that minimizes the mean squared error between the realized volatility and the estimated volatility from the EWMA model.
+
+Here we calculate the realized volatility defined as the equally weighted average of the standard deviation of the previous $n$ periods.
+<<>>=
+vol <- realizedVol(R, n=5)
+@
+
+Now we plot the estimated volatility from the EWMA model and the realized volatility.
+<<>>=
+plot(vol, main="EWMA Volatility Estimate vs. Realized Volatility")
+lines(volEst$estimate, col="red")
+legend("topright", legend=c("Realized Volatility", "EWMA Volatility Estimate"), 
+       col=c("black", "red"), lty=c(1,1), cex=0.8, bty="n")
+@
+
+The \code{estimateLambdaVol} function estimates the value for $\lambda$ by minimizing the mean squared error between the realized volatility and the EWMA model estimated volatility.
+<<>>=
+# Estimate lambda
+# Use initialWindow = 15 for the EWMA volatility estimate and
+# n = 5 to calculate the realized volatility
+lambda <- estimateLambdaVol(R, initialWindow, n=5)
+lambda
+
+volEst2 <- EWMA(R, lambda, initialWindow, type="volatility")
+volEst2
+@
+
+Here we plot the realized volatility along with the EWMA estimated volatility with $\lambda = 0.94$ and $\lambda = 0.7359253$ to gain intuition through visualization of the EWMA volatility estimates.
+<<>>=
+# Realized volatility
+plot(vol, main="EWMA Volatility Estimate vs. Realized Volatility")
+# EWMA volatility estimate, lambda = 0.94
+lines(volEst$estimate, col="red")
+# EWMA volatility estimate, lambda = 0.0.7359253
+lines(volEst2$estimate, col="blue")
+legend("topright", legend=c("Realized Volatility", 
+                            "EWMA Volatility, lambda = 0.94",
+                            "EWMA Volatility, lambda = 0.7359253"),
+       col=c("black", "red", "blue"), lty=c(1, 1, 1), cex=0.7, bty="n")
+@
+
+Now we move to using the EWMA model to calculate the covariance between the returns of two assets. Note that we set \code{lambda=NULL} in the \code{EWMA} function. If \code{lambda = NULL}, the optimal $\lambda$ value is estimated by minimizing the mean squared error between the estimated covariance and realized covariance.
+
+The covariance between two variables, $X$ and $Y$, is defined as
+\begin{equation}
+\sigma_{XY} = E[(X - \mu_X)(Y - \mu_Y)]
+\end{equation}
+
+where
+\begin{description}
+  \item[$\mu_X$] is the sample mean of $X$
+  \item[$\mu_Y$] is the sample mean of $Y$
+\end{description}
+
+An EWMA model for the updating the covariance estimate between $X$ and $Y$ on day $n$ is
+\begin{equation}
+cov(X,Y) = \sigma_{XY,n} = \lambda \sigma_{XY,n-1} + (1 - \lambda) X_{n-1} Y_{n-1}
+\end{equation}
+
+<<>>=
+# Use the first 2 columns of the large cap weekly returns
+R <- largecap_weekly[,1:2]
+initialWindow <- 52
+covEst <- EWMA(R, lambda=NULL, initialWindow, n=10, "covariance")
+covEst
+plot(covEst, main="EWMA Estimated Covariance")
+@
+
+
+In a similar fashion, we can also use the EWMA model to calculate the correlation between the returns of two assets.
+
+The correlation between two variables, $X$ and $Y$, is defined as
+\begin{equation}
+\rho_{XY} = \frac{cov(X,Y)}{\sigma_X \sigma_Y}
+\end{equation}
+
+where
+\begin{description}
+  \item[$cov(X,Y)$] is the covariance between $X$ and $Y$
+  \item[$\sigma_X$] is the standard deviation of $X$
+  \item[$\sigma_Y$] is the standard deviation of $Y$
+\end{description}
+
+The EWMA mdoel for correlation is calculated using an EWMA model for the estimated covariance between $X$ and $Y$, estimated volatility of $X$, and estimated volatility of $Y$.
+<<>>=
+corEst <- EWMA(R, lambda=NULL, initialWindow, n=10, "correlation")
+corEst
+plot(corEst, main="EWMA Estimated Correlation")
+@
+
+The previous examples demonstrated using an EWMA model to estimate the volatility of the returns of a single asset, and the correlation and volatility between the returns of two assets. Now we move to using an EWMA model to estimated the covariance and correlation of a multivariate data set.
+
+<<>>=
+# Use the first 4 columns of the largecap_weekly dataset
+R <- largecap_weekly[,1:4]
+
+# calculate the sample covariance matrix
+sample_cov <- cov(R)
+sample_cov
+
+# EWMA covariance matrix estimate
+lambda <- 0.94
+initialWindow <- 52
+covEst <- EWMA(R, lambda, initialWindow, type="covariance")
+covEst
+@
+
+In a similar fashion, we can also use the EWMA model to estimate the correlation matrix.
+<<>>=
+# calculate the sample covariance matrix
+sample_cor <- cor(R)
+sample_cor
+
+# EWMA covariance matrix estimate
+lambda <- 0.94
+initialWindow <- 52
+corEst <- EWMA(R, lambda, initialWindow, type="correlation")
+corEst
+@
+
+
+\section{The GARCH(1,1) Model}
+We now demonstrate the generalized autoregressive conditional heteroskedasticity (GARCH) as presented by Bollerslev in 1986 as a way to estimate volatility. The general GARCH(p,q) model calculates $\sigma_n^2$ from the most recent $p$ observations of $u^2$ and the most recent $q$ estimates of $\sigma_n^2$. The GARCH(1,1) model refers to the most recent observation of $u^2$ and the most recent estimate of $\sigma_n^2$. The GARCH(1,1) is a popular model and the one we will focus on. The equation for the GARCH(1,1) model is
+
+\begin{equation}
+\sigma_n^2 = \gamma V_L + \alpha u_{n-1}^2 + \beta \sigma_{n-1}^2
+\end{equation}
+
+where:
+\begin{description}
+  \item[$\gamma$] is the weight assigned to $V_L$
+  \item[$V_L$] is the long-run average variance rate
+  \item[$alpha$] is the weight assigned to $u_{n-1}^2$
+  \item[$u_{n-1}$] is the squared returns of preiod $n-1$
+  \item[$\beta$] is the weight assigned to $\sigma_{n-1}^2$
+  \item[$\sigma_{n-1}^2$] is the estimated variance rate of period $n-1$
+\end{description}
+
+The weights must sum to 1 such that
+\begin{equation}
+\gamma + \alpha + \beta = 1
+\end{equation}
+
+It should be noted that the EWMA model discussed in the previous section is a special case of the GARCH(1,1) model where $\gamma = 0$, $\alpha = 1 - \lambda$, and $\beta = \lambda$.
+
+A more common form of the model is obtained by setting $\omega = \gamma V_L$ such that the equation for the model is
+
+\begin{equation}
+\sigma_n^2 = \omega + \alpha u_{n-1}^2 + \beta \sigma_{n-1}^2
+\end{equation}
+
+With the estimated parameters for $\omega$, $\alpha$, and $\beta$, we can calculate $\gamma$ and $V_L$ as
+\begin{eqnarray}
+\gamma &=& 1 - \alpha - \beta\\
+V_L &=& \omega / \gamma
+\end{eqnarray}
+
+A key characteristic of the GARCH(1,1) model is mean reversion, i.e. the variance rate is pulled back to the long-run average variance rate over time. In contrast, the EWMA model is not mean reverting.
+
+\subsection{Estimating GARCH(1,1) Parameters}
+Estimating the parameters for the GARCH model requires an optimization routine to maximize the likelihood. The FRM text describes an example of using a spreadsheet and a solver, e.g. the Microsoft Excel Solver. The implementation of GARCH in the GARPFRM package \citep{GARPFRM} utilizes the rugarch package \citep{rugarch}. The implementation in the rugarch package uses C code for a fast and efficient algorithm for the main part of the likelihood calculation.
+
+Here we demonstrate how to specify and fit a GARCH(1,1) model using weekly returns for Microsoft.
+<<>>=
+# Use the weekly MSFT returns
+R <- largecap_weekly[,"MSFT"]
+
+# Specify and fit the MSFT returns to a standard ARMA(0,0)-GARCH(1,1) model
+# Note that the default is ARMA(1,1)-GARCH(1,1) so we only need to change
+# the ARMA order. The default arguments were chosen to be consistent with the 
+# default arguments in rugarch.
+model <- uvGARCH(R, armaOrder=c(0,0))
+
+# Get the fitted GARCH model
+fit <- getFit(model)
+
+# Get the coefficients
+coef(fit)
+
+# Show the summary results of the fit
+fit
+@
+
+\subsection{Using GARCH(1,1) to Forecast Future Volatility}
+%Recall that the GARCH(1,1) model estimates the variance rate on day $n$, $\sigma_n^2$ at the end of day $n-1$ is
+%
+%\begin{equation}
+%\sigma_n^2 = (1 - \alpha - \beta) V_L + \alpha u_{n-1}^2 + \beta \sigma_{n-1}^2
+%\end{equation}
+%
+%so that
+%\begin{equation}
+%\sigma_n^2  - V_L = \alpha ( u_{n-1}^2 - V_L) + \beta( \sigma_{n-1}^2 - V_L)
+%\end{equation}
+%
+%On day $n + t$ in the future,
+%\begin{equation}
+%\sigma_{n+t}^2  - V_L = \alpha ( u_{n+t-1}^2 - V_L) + \beta( \sigma_{n+t-1}^2 - V_L)
+%\end{equation}
+%
+%The expected value of $u_{n+t-1}^2$ is $\sigma_{n+t-1}^2$, which results in
+%\begin{equation}
+%E[ \sigma_{n+t}^2  - V_L] = (\alpha + \beta) E[ \sigma_{n+t-1}^2 - V_L ]
+%\end{equation}
+%
+%Using this equation repeatedly yields
+%\begin{equation}
+%E[ \sigma_{n+t}^2 ] = V_L + (\alpha + \beta)^t ( \sigma_{n}^2 - V_L )
+%\end{equation}
+
+<<>>=
+# n period ahead forecast
+forecast10 <- forecast(model, nAhead=10)
+forecast10
+@
+
+Plot of the forecast.
+<<>>=
+plot(forecast10, which=3)
+@
+
+
+Now we specify and fit a model with \code{outSample=100} so that we can use the last 100 data points for out of sample testing and do a rolling forecast.
+<<>>=
+model11 <- uvGARCH(R, armaOrder=c(0,0), outSample=100)
+forecast2 <- forecast(model11, nRoll=10)
+forecast2
+@
+
+Plot the rolling forecast.
+<<>>=
+plot(forecast2, which=4)
+@
+
+\bibliography{GARPFRM}
+
+\end{document}

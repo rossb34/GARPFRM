@@ -1,0 +1,99 @@
+%% LyX 2.0.6 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[english]{article}
+\usepackage{mathpazo}
+\renewcommand{\sfdefault}{lmss}
+\renewcommand{\ttdefault}{lmtt}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{verbose,tmargin=2.5cm,bmargin=2.5cm,lmargin=2.5cm,rmargin=2.5cm}
+\usepackage{babel}
+\usepackage[unicode=true]
+ {hyperref}
+\usepackage{breakurl}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+% \VignetteEngine{knitr::knitr}
+%\VignetteIndexEntry{Data Access Basics}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\makeatother
+
+\begin{document}
+
+\title{Accessing Financial Data with R}
+
+
+\author{Guy Yollin%
+\thanks{Department of Applied Mathematics, University of Washington. Email:
+\protect\href{mailto:gyollin@uw.edu}{gyollin@uw.edu} %
+}}
+
+\maketitle
+<<setup, echo=FALSE>>=
+library('knitr')
+opts_chunk$set(message=FALSE, fig.path='figures/', fig.align='center', fig.width=4, fig.height=3, fig.keep='last', dev.args=list(pointsize=8))
+options(width=80)
+@
+\begin{abstract}
+Financial data analysis with R requires access to financial data.
+This document will demonstrate a variety of ways to to access free
+financial data from the internet. We will also discuss accessing financial
+data downloaded from some commercial financial databases.
+\end{abstract}
+
+\section{The \texttt{getSymbols} function from the \texttt{quantmod} package}
+
+Probably the most useful function for retrieving financial data from
+the internet is the \texttt{getSymbols} function from the \texttt{quantmod}
+package. The function \texttt{getSymbols} can download data from Yahoo
+Finance, Google Finance, the Federal Reserve's FRED database, and
+Oanada. The function can also read data from MySQL databases, \texttt{.csv}
+files, and \texttt{.RData} files. 
+
+The following code chuck shows the arguments of the function.
+
+<<>>=
+library(quantmod)
+args(getSymbols)
+@
+
+The key arguments are summarized as follows:
+\begin{description}
+\item [{Symbols}] character vector of ticker systems to download (this
+is the only required argument)
+\item [{src}] data source: yahoo (default), google, MySQL, FRED, csv, RData,
+and oanda
+\end{description}
+
+\subsection{Downloading data from Yahoo Finance}
+
+The following code chunk demonstrates how to download the S\&P 500
+index data from Yahoo Finance, the default data source.
+
+<<fig.width=4, fig.height=3>>=
+getSymbols('^GSPC')
+chart_Series(GSPC)
+@
+
+
+\subsection{Downloading data from the Federal Reserve's FRED database}
+
+The Federal Reserve's FRED database (\href{http://research.stlouisfed.org/}{http://research.stlouisfed.org/})
+contains more than 150,000 US and international financial and economic
+time series.
+
+The following code chunk demonstrates how to download the 3-month
+Treasury Bill rate from FRED.
+
+<<fig.width=4, fig.height=3>>=
+getSymbols('DGS3MO',src='FRED')
+plot(DGS3MO,main="3-Month Treasury Constant Maturity Rate",cex.main=0.75)
+@
+
+%\bibliographystyle{jss}
+%\bibliography{DataAccess}
+
+\end{document}

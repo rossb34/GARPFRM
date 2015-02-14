@@ -1,0 +1,429 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+
+%\VignetteIndexEntry{Quantifying Volatility in VaR Models}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+opts_chunk$set(cache=TRUE, tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{Quantifying Volatility in VaR Models}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate methods for estimating and backtesting Value-at-Risk (VaR) using various methods as outlined in Chapter 11 of Foundations of Risk Management.
+\end{abstract}
+
+\tableofcontents
+
+\section{Stochastic Behavior of Returns}
+Computing the Value-at-Risk (VaR) measure requires quantifying the tail of the distribution of returns. One approach is to assume the asset returns follow a specific distribution, for example a normal distribution. This requires assumptions about the parameters needed to characterize the distribution. A common distribution considered is the normal distribution. However, it is often seen that asset returns tend to depart from the normal distribution. Asset returns tend to be fat-tailed, skewed, and unstable.
+
+\subsection{The Distribution of Conoco Phillips Weekly Returns}
+Here we consider the weekly returns of Conoco Phillips (COP). We compare the empirical distribution to a normal distribution to better understand the characteristics of COP weekly returns. 
+<<>>=
+# Load the package and data
+library(GARPFRM)
+data(crsp_weekly)
+R <- largecap_weekly
+R.COP <- R[,"COP"]
+@
+
+Plot the weekly returns
+<<>>=
+plot(R.COP, main="COP Weekly Returns")
+@
+
+Here we plot the histogram with a kernel density estimate and normal curve overlayed to better understand the distribution of COP returns. Plotting the distribution of returns will give us a better idea if COP returns have "fat tails" or is skewed relative to a normal distribution.
+<<>>=
+hist(R.COP, breaks=50, main="Histogram of COP Returns", 
+     col="lightblue", probability=TRUE)
+lines(density(R.COP), lwd=2)
+curve(dnorm(x, mean=mean(R.COP), sd=sd(R.COP)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.COP)
+legend("topleft", legend=c("density", "normal"), 
+       col=c("black", "red"), lty=c(1, 2), bty="n")
+@
+
+Here we zoom in on the left tail and see that indeed, there are more extreme left tail events than predicted by a normal distribution.
+<<>>=
+hist(R.COP, breaks=50, main="Histogram of COP Returns", 
+     col="lightblue", probability=TRUE, 
+     xlim=c(min(density(R.COP)$x), -0.05))
+lines(density(R.COP), lwd=2)
+curve(dnorm(x, mean=mean(R.COP), sd=sd(R.COP)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.COP)
+legend("topleft", legend=c("density", "normal"), 
+       col=c("black", "red"), lty=c(1, 2), bty="n")
+@
+
+We can also inspect a Quantile-Quantile plot and again we see that the COP weekly returns exhibit a fat left tail.
+<<>>=
+chart.QQPlot(R.COP)
+@
+
+\section{VaR Estimation Approaches}
+
+\subsection{Historical Standard Deviation}
+TODO: Content on how volatility changes over time.
+
+Here we estimate historical standard deviation over a moving window using the most recent 6, 13, and 52 periods.
+<<>>=
+# Compute rolling standard deviation estimate
+SD6 <- rollSD(R.COP, 6)
+SD13 <- rollSD(R.COP, 13)
+SD52 <- rollSD(R.COP, 52)
+# Plot rolling standard deviation estimates
+plot(SD6, type="n", main="Rolling Standard Deviation", 
+     ylab="standard deviation")
+lines(SD6, col="blue", lty=2)
+lines(SD13, col="red")
+lines(SD52, lwd=2)
+legend("topleft", legend=c("rollSD (6)", "rollSD(13)", "rollSD(52)"), 
+       bty="n", lty=c(2, 1, 1), col=c("blue", "red", "black"), cex=0.8)
+@
+
+We can see that volatility varies over time and using different widths of a moving window result in different estimates.
+
+\subsection{Exponential Smoothing Volatility}
+
+Exponential smoothing is an approach of estimating volatility that gives more weight to more recent information and less weight to distant information. In the Exponentially Weighted Moving Average (EWMA) Model, the weights decrease exponentially as we move backwards through time.
+
+This weighting scheme leads to simple formula for updating volatility estimates. The predictive version of the variance rate of day $n$ is given as
+
+\begin{equation}
+\hat{\sigma}_n^2 = \lambda \hat{\sigma}_{n-1}^2 + (1 - \lambda) u_{n-1}^2
+\end{equation}
+
+where:
+\begin{description}
+  \item[$\hat{\sigma}_{n-1}^2$] is the estimated variance rate of period $n-1$
+  \item[$u_{n-1}^2$] is the squared return of preiod $n-1$
+  \item[$\lambda$] is a constant between 0 and 1
+\end{description}
+
+A data driven approach for selecting a value for $\lambda$ is to determine the $\lambda$ that minimizes the mean squared error between the realized volatility and the estimated volatility from the EWMA model. The realized volatility defined as the equally weighted average of the standard deviation of the previous $n$ periods.
+
+Here we fit an EWMA model to the COP weekly returns to estimate VaR. Note that we set \code{lambda=NULL} in the \code{EWMA} function. If \code{lambda = NULL}, the optimal $\lambda$ value is estimated by minimizing the mean squared error between the estimated volatility and realized volatility. Here we compute realized volatility as the equally weighted average of the standard deviation of the previous 13 periods.
+
+<<>>=
+# Estimating volatility
+# EWMA Model
+initialWindow <- 100
+n <- 13
+type <- "volatility"
+
+# Fit an EWMA model to estimate volatility
+# Choose an optimal lambda parameter that minimizes the mean squared error
+# betwen realized volatility and the EWMA model volatility estimate
+ewmaModel <- EWMA(R.COP, lambda=NULL, initialWindow, n, type)
+ewmaModel
+
+# One period ahead forecast
+ewmaVolForecast <- forecast(ewmaModel)
+
+# VaR using EWMA volatility forecast
+# Here we assume the expected value of returns is simply the mean of returns
+mean(R.COP) + as.numeric(ewmaVolForecast) * qnorm(0.05)
+@
+
+\subsection{GARCH Model Volatility}
+We now demonstrate the generalized autoregressive conditional heteroskedasticity (GARCH) as presented by Bollerslev in 1986 as a way to estimate volatility. The general GARCH(p,q) model calculates $\sigma_n^2$ from the most recent $p$ observations of $u^2$ and the most recent $q$ estimates of $\sigma_n^2$. The GARCH(1,1) model refers to the most recent observation of $u^2$ and the most recent estimate of $\sigma_n^2$. The GARCH(1,1) is a popular model and the one we will focus on. The equation for the GARCH(1,1) model is
+
+\begin{equation}
+\sigma_n^2 = \gamma V_L + \alpha u_{n-1}^2 + \beta \sigma_{n-1}^2
+\end{equation}
+
+where:
+\begin{description}
+  \item[$\gamma$] is the weight assigned to $V_L$
+  \item[$V_L$] is the long-run average variance rate
+  \item[$alpha$] is the weight assigned to $u_{n-1}^2$
+  \item[$u_{n-1}$] is the squared returns of preiod $n-1$
+  \item[$\beta$] is the weight assigned to $\sigma_{n-1}^2$
+  \item[$\sigma_{n-1}^2$] is the estimated variance rate of period $n-1$
+\end{description}
+
+The weights must sum to 1 such that
+\begin{equation}
+\gamma + \alpha + \beta = 1
+\end{equation}
+
+It should be noted that the EWMA model discussed in the previous section is a special case of the GARCH(1,1) model where $\gamma = 0$, $\alpha = 1 - \lambda$, and $\beta = \lambda$.
+
+A more common form of the model is obtained by setting $\omega = \gamma V_L$ such that the equation for the model is
+
+\begin{equation}
+\sigma_n^2 = \omega + \alpha u_{n-1}^2 + \beta \sigma_{n-1}^2
+\end{equation}
+
+Here we specify and fit a GARCH model to the COP weekly returns to estimate VaR.
+<<>>=
+# Specify and fit a GARCH Model
+garchModel <- uvGARCH(R.COP, armaOrder=c(0,0))
+
+# One period ahead forecast of GARCH model
+garchForecast <- forecast(garchModel, 1)
+
+# VaR forecast using GARCH Model
+fitted(garchForecast) + sigma(garchForecast) * qnorm(0.05)
+@
+
+\section{Historic Simulation}
+Now we move to estimating VaR using historical data. Using historical data to estimate VaR is a simple and convenient method that has the advantage of requiring zero parameters to estimate except for the moving window width. Another advantage is that no distributional assumptions need to be made. If the distribution of returns is skewed or fat-tailed, this will will be captured in the estimate.
+
+
+In theory, we could accurately estimate percentiles of a distribution given an infinite amount of historical data. This is data intensive and unrealistic. In reality, we only have a sample of the population of asset returns. One method to address this is the bootstrap. 
+
+
+Bootstrapping is a statistical method for estimating the sampling distribution of an estimator by sampling with replacement from the original sample. Bootstrap resampling generates data by sampling with replacement from the original observed data. One key assumption is that returns are independent. By random resampling, we break any pattern of time variation in returns. Another drawback is that resampling requires large sample sizes and is relatively computationally intensive.
+
+Here we estimate VaR of COP weekly returns at the 5\% $\alpha$ level.
+<<>>=
+# Historical VaR estimate at the 5% level
+historicalVaR5 <- VaR(R.COP, p=0.95, method="historical")
+
+# VaR estimate assuming a normal distribution
+normalVaR5 <- VaR(R.COP, p=0.95, method="gaussian")
+
+# Bootstrapped historical VaR estimate 
+bootHistVaR5 <- bootVaR(R.COP, p=0.95, method="historical")
+
+rnames <- c("Historical", "Normal", "Bootstrap Historical")
+matrix(c(historicalVaR5, normalVaR5, bootHistVaR5[1,]), 
+       nrow=3, ncol=1, dimnames=list(rnames, "VaR (5%)"))
+@
+
+<<>>=
+hist(R.COP, main="Histogram of COP returns", breaks=50, 
+     col="blue", probability=TRUE)
+lines(density(R.COP), lwd=2)
+curve(dnorm(x, mean=mean(R.COP), sd=sd(R.COP)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.COP)
+arrows(historicalVaR5, 0, historicalVaR5, 6, code=1, lwd=2)
+text(historicalVaR5, 6, labels="historical VaR (5%)", pos=2, cex=0.7)
+@
+
+We now estimate VaR of COP weekly returns at the 1\% $\alpha$ level. As we move further in the tail, we see that the VaR estimate assuming normally distributed returns differes from the historical VaR estimate.
+<<>>=
+# Estimating VaR at the 1% level
+historicalVaR1 <- VaR(R.COP, p=0.99, method="historical")
+normalVaR1 <- VaR(R.COP, p=0.99, method="gaussian")
+bootHistVaR1 <- bootVaR(R.COP, p=0.99, method="historical")
+
+matrix(c(historicalVaR1, normalVaR1, bootHistVaR1[1,]), 
+       nrow=3, ncol=1, dimnames=list(rnames, "VaR (1%)"))
+@
+
+<<>>=
+hist(R.COP, main="Histogram of COP returns", breaks=50, 
+     col="blue", probability=TRUE)
+lines(density(R.COP), lwd=2)
+curve(dnorm(x, mean=mean(R.COP), sd=sd(R.COP)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.COP)
+arrows(historicalVaR1, 0, historicalVaR1, 4, code=1, lwd=2)
+text(historicalVaR1, 4, labels="Historical VaR (1%)", pos=2, cex=0.7)
+arrows(normalVaR1, 0, normalVaR1, 6, code=1, lwd=2)
+text(normalVaR1, 6, labels="Normal VaR (1%)", pos=2, cex=0.7)
+@
+
+\section{Return Aggregation}
+Here we consider a portfolio of the first 10 assets in the largecap\_weekly dataset. 
+
+Now consider computing VaR for a portfolio with a number of positions. One method is to use the covariance matrix of asset returns to compute the volatility and VaR. Another approach is return aggregation where the historical returns of each asset are weighted by the relative position size and aggregated.
+
+The VarCov approach assumes that asset returns are jointly normal and the return on the portfolio is also normally distributed. The RiskMetrics$^{TM}$ approach is commonly termed the Variance-Covariance (VarCov) approach. Using this approach, a portfolio of $N$ positions requres $N$ volatility estimates and $N(N-1) / 2$ correlation estimates. For large portfolios with a large number of positions, this is potentially a very large number which exposes the model to estimation error.
+
+A key concern with the VarCov approach is the correlation estimate. As we saw with volatility in a previous section, correlation changes over time. For example, if correlations increase when markets fall, the VaR estimate of the position may be understated.
+
+The return aggregation approach is a "simulation" method where the returns are calculated using historical data, but the weights of each position today. For example, we calculate the returns we would have earned over the most recent $K$ periods by pretending the relative postions we hold today are the same positions we held $K$ days ago. This approach has the advantage that no parameters need to be estimated (not considering the $K$ lookback period). This means we do not have to estimate correlation. If markets fall and move together, this will be captured by the return aggregation approach. This approach will also capture fatter tails relative to a normal distribution.
+
+Suppose we have an equally weighted portfolio consisting of the first 10 assets in the largecap\_weekly dataset and use a lookback period of $K = 52$.
+<<>>=
+# Asset returns
+R <- largecap_weekly[, 1:10]
+
+# Lookback period
+K <- 52
+
+# Set the weights K periods ago
+weights <- xts(matrix(rep(1 / 10, 10), nrow=1), index(R)[nrow(R) - K])
+
+# Calculate the portfolio returns for the most recent K periods
+R.portfolio <- Return.rebalancing(R, weights)
+@
+
+Here we plot the aggregated portfolio returns and histogram of returns.
+<<>>=
+par(mfrow=c(2,1))
+# Portfolio returns
+plot(R.portfolio, main="Portfolio Returns")
+
+# Histogram of portfolio returns
+hist(R.portfolio, main="Histogram of Portfolio returns", breaks=50, 
+     col="blue", probability=TRUE)
+lines(density(R.portfolio), lwd=2)
+curve(dnorm(x, mean=mean(R.portfolio), sd=sd(R.portfolio)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.portfolio)
+par(mfrow=c(1,1))
+@
+
+Here we estimate the VaR of the portfolio using the aggregated returns. We can see that the normal assumption underestimates the historical VaR estimate.
+<<>>=
+# Estimate the VaR of the portfolio using the last 52 periods
+# Historical VaR estimate
+portfVaR.HS <- VaR(R.portfolio, p=0.95, method="historical")
+
+# Bootstrapped VaR estimate
+portfVaR.BootHS <- bootVaR(R.portfolio, p=0.95, method="historical")
+
+# Normal VaR estimate
+portfVaR.normal <- VaR(R.portfolio, p=0.95, method="gaussian")
+@
+
+Now we estimate the portfolio VaR using the VarCov approach.
+<<>>=
+# Use the most recent 52 periods to compute the sample covariance matrix
+sampleCov <- cov(tail(R, 52))
+# Convert the xts object of weights to a matrix
+weights <- matrix(weights, ncol=1)
+
+# Compute the portfolio VaR estimate using the VarCov approach with sample
+# covariance matrix
+portfVaR.cov <- sqrt(t(weights) %*% sampleCov %*% weights) * qnorm(0.05)
+
+# Use EWMA model to compute variance covariance matrix
+# EWMA model to compute variance covariance matrix
+ewmaCov <- EWMA(tail(R, 52), lambda=0.9, initialWindow=10, 
+                type="covariance")$estimate
+
+# Compute the portfolio VaR estimate using the VarCov approach with EWMA
+# model estimated covariance matrix
+portfVaR.ewmaCov <- sqrt(t(weights) %*% ewmaCov %*% weights) * qnorm(0.05)
+@
+
+As discussed earlier, the correlation and covariance between assets change over time. To demonstrate this, we plot the rolling correlation and rolling covariance estimates. For simplicity, we only consider the first 2 assets.
+<<>>=
+# Compute rolling correlation estimates
+cor13 <- rollCor(R[,1:2], 13)
+cor26 <- rollCor(R[,1:2], 26)
+
+# Compute rolling covariance estimates
+cov13 <- rollCov(R[,1:2], 13)
+cov26 <- rollCov(R[,1:2], 26)
+
+# Plot rolling correlation estimates
+plot(cor13, type="n", main="Rolling Correlation", 
+     ylab="correlation")
+lines(cor13, col="blue")
+lines(cor26, col="red")
+legend("topleft", legend=c("rollCor(13)", "rollCor(26)"), 
+       bty="n", lty=c(1, 1), col=c("blue", "red"), cex=0.8)
+
+# Plot rolling covariance estimates
+plot(cov13, type="n", main="Rolling Covariance", 
+     ylab="covariance")
+lines(cov13, col="blue")
+lines(cov26, col="red")
+legend("topleft", legend=c("rollCov(13)", "rollCov(26)"), 
+       bty="n", lty=c(1, 1), col=c("blue", "red"), cex=0.8)
+@
+
+Returning our focus back to the return aggregation approach. We can also compute the portfolio VaR using methods we covered earlier when computing the VaR estimate of Conoco Phillips (COP) returns.
+<<>>=
+# Portfolio VaR estimate with EWMA model
+ewmaModel <- EWMA(R.portfolio, lambda=NULL, initialWindow=10, n, type)
+# One period ahead forecast
+ewmaVolForecast <- forecast(ewmaModel)
+
+# VaR using EWMA volatility forecast
+# Here we assume the expected value of returns is simply the mean of returns
+portfVaR.EWMA <- mean(R.portfolio) + as.numeric(ewmaVolForecast) * qnorm(0.05)
+@
+
+Here we compare each portfolio VaR estimate.
+<<>>=
+dfVaR <- t(data.frame(portfVaR.HS, portfVaR.BootHS[1,], portfVaR.normal, 
+                    portfVaR.cov, portfVaR.ewmaCov, portfVaR.EWMA))
+rownames(dfVaR) <- c("portfVaR.HS", "portfVaR.BootHS", "portfVaR.normal", 
+                    "portfVaR.cov", "portfVaR.ewmaCov", "portfVaR.EWMA")
+dfVaR
+@
+
+\section{VaR Backtesting}
+TODO: Comments on VaR backtesting
+
+Here we consider an equal weight portfolio, rebalanced annually, of the first 10 assets of the largecap\_weekly dataset. 
+<<>>=
+R <- largecap_weekly[, 1:10]
+
+# Annual rebalance dates
+rebalanceDates <- index(R)[endpoints(index(R), on="years")]
+
+# Create an xts object of weights at the specified rebalance dates
+weights <- xts(matrix(1 / 10, nrow=length(rebalanceDates), 
+                      ncol=10), rebalanceDates)
+
+# Calculate the aggregate portfolio return
+R.portfolio <- Return.rebalancing(R, weights)
+@
+
+<<>>=
+par(mfrow=c(2,1))
+# Portfolio returns
+plot(R.portfolio, main="Portfolio Returns")
+
+# Histogram of portfolio returns
+hist(R.portfolio, main="Histogram of Portfolio returns", breaks=50, 
+     col="blue", probability=TRUE)
+lines(density(R.portfolio), lwd=2)
+curve(dnorm(x, mean=mean(R.portfolio), sd=sd(R.portfolio)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+rug(R.portfolio)
+par(mfrow=c(1,1))
+@
+
+
+Here we fit a GARCH(1,1) model to the portfolio returns and run a backtest on the VaR estimates to test for the number of violations.
+<<>>=
+garchModel <- uvGARCH(R.portfolio, armaOrder=c(0,0))
+btVaR.GARCH <- backtestVaR.GARCH(garchModel, p=0.95, refitEvery=5, window=100)
+btVaR.GARCH
+@
+
+<<>>=
+# Plot the GARCH VaR backtest
+plot(btVaR.GARCH, pch=20, legendLoc="topright")
+@
+
+Now we perform a VaR backtest using historical VaR estimates.
+<<>>=
+# Run a VaR backtest on portfolio returns
+# Compute VaR estimate using gaussian, historical, and modified methods
+backtest <- backtestVaR(R.portfolio, window=100, p=0.95, 
+                        method=c("gaussian", "historical", "modified"))
+backtest
+@
+
+<<>>=
+# plot the VaR backtest
+plot(backtest, pch=18, legendLoc="topright")
+@
+
+
+\end{document}

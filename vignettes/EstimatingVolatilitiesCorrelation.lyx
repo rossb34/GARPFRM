@@ -1,0 +1,1623 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\begin_modules
+knitr
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Estimating Volatilities and Correlation
+\end_layout
+
+\begin_layout Author
+Ross Bennett
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=FALSE>>= 
+\end_layout
+
+\begin_layout Plain Layout
+
+library(knitr) 
+\end_layout
+
+\begin_layout Plain Layout
+
+opts_chunk$set(cache=TRUE, tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Abstract
+The purpose of this vignette is to demonstrate methods for estimating volatility
+ and correlation as outlined in Chapter 10 of Foundations of Risk Management.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Estimating Volatility
+\end_layout
+
+\begin_layout Standard
+We define 
+\begin_inset Formula $\sigma_{n}$
+\end_inset
+
+ as the volatility on day 
+\begin_inset Formula $n$
+\end_inset
+
+, as estimated at the end of day 
+\begin_inset Formula $n-1$
+\end_inset
+
+.
+ This section describes the standard approach to estimating 
+\begin_inset Formula $\sigma_{n}$
+\end_inset
+
+ from historical data.
+\end_layout
+
+\begin_layout Standard
+First we define the continuously compounded return between the end of day
+ 
+\begin_inset Formula $i-1$
+\end_inset
+
+ and the end of day 
+\begin_inset Formula $i$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+u_{i}=\ln\frac{S_{i}}{S_{i-1}}
+\end{equation}
+
+\end_inset
+
+where: 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $S_{i}$
+\end_inset
+
+ is the value of the market variable at the end of day 
+\begin_inset Formula $i$
+\end_inset
+
+ (e.g.
+ asset prices) 
+\end_layout
+
+\begin_layout Standard
+An unbiased estimate of the variance rate per day on day 
+\begin_inset Formula $n$
+\end_inset
+
+, 
+\begin_inset Formula $\sigma_{n}^{2}$
+\end_inset
+
+, using the 
+\begin_inset Formula $m$
+\end_inset
+
+ most recent observations is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\sigma_{n}^{2}=\frac{1}{m-1}\sum_{i=1}^{m}(u_{n-1}-\bar{u})^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\begin_inset Formula $\bar{u}$
+\end_inset
+
+ is the mean of 
+\begin_inset Formula $u_{i}$
+\end_inset
+
+ for 
+\begin_inset Formula $i={1,2,...,m}$
+\end_inset
+
+ 
+\begin_inset Formula 
+\begin{equation}
+\bar{u}=\frac{1}{m}\sum_{i=1}^{m}u_{n-1}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A few changes can be made to simplify the equation for monitoring daily
+ volatility.
+ 
+\end_layout
+
+\begin_layout Enumerate
+define 
+\begin_inset Formula $u_{i}$
+\end_inset
+
+ as the percentage change in the market variable between the end of day
+ 
+\begin_inset Formula $i-1$
+\end_inset
+
+ and the end of day 
+\begin_inset Formula $i$
+\end_inset
+
+.
+ 
+\begin_inset Formula 
+\begin{equation}
+u_{i}=\frac{S_{i}-S_{i-1}}{S_{i}}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Enumerate
+Assume 
+\begin_inset Formula $\bar{u}$
+\end_inset
+
+ to be zero 
+\end_layout
+
+\begin_layout Enumerate
+Replace 
+\begin_inset Formula $m-1$
+\end_inset
+
+ with 
+\begin_inset Formula $m$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+These changes simplify the formula for the variance rate to 
+\begin_inset Formula 
+\begin{equation}
+\sigma_{n}^{2}=\frac{1}{m}\sum_{i=1}^{m}u_{n-1}^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This equation gives equal weight to each of the previous 
+\begin_inset Formula $m$
+\end_inset
+
+ observations.
+ A model that allows one to assign weights to the previous observations
+ is 
+\begin_inset Formula 
+\begin{equation}
+\sigma_{n}^{2}=\sum_{i=1}^{m}\alpha_{i}u_{n-1}^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $\alpha_{i}$
+\end_inset
+
+ is the weight given to the observation 
+\begin_inset Formula $i$
+\end_inset
+
+ days ago.
+\end_layout
+
+\begin_layout Standard
+A special case of equation is the Exponentially Weighted Moving Average
+ (EWMA) Model.
+\end_layout
+
+\begin_layout Section
+Exponentially Weighted Moving Average Model
+\end_layout
+
+\begin_layout Standard
+The Exponentially Weighted Moving Average (EWMA) Model is a special case
+ of a weighted moving average where the weights 
+\begin_inset Formula $\alpha_{i}$
+\end_inset
+
+ decrease exponentially as we move backwards through time.
+ Greater weights are given to more recent observations.
+\end_layout
+
+\begin_layout Standard
+This weighting scheme leads to simple formula for updating volatility estimates.
+ The predictive version of the variance rate of day 
+\begin_inset Formula $n$
+\end_inset
+
+ is given as
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\hat{\sigma}_{n}^{2}=\lambda\hat{\sigma}_{n-1}^{2}+(1-\lambda)u_{n-1}^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where: 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\hat{\sigma}{}_{n-1}^{2}$
+\end_inset
+
+ is the estimated variance rate of period 
+\begin_inset Formula $n-1$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $u_{n-1}^{2}$
+\end_inset
+
+ is the squared return of preiod 
+\begin_inset Formula $n-1$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\lambda$
+\end_inset
+
+ is a constant between 0 and 1 
+\end_layout
+
+\begin_layout Standard
+The value for 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ determines how responsive the volatility estimate is to the most recent
+ percentage change, 
+\begin_inset Formula $u_{n-1}$
+\end_inset
+
+.
+ A lower (higher) value for 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ leads to a greater (lesser) weight given to 
+\begin_inset Formula $u_{n-1}$
+\end_inset
+
+.
+ One way to think of this is that values of 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ close to 1 produce volatility estimates that respond relatively slow to
+ new information coming into the market provided by 
+\begin_inset Formula $u_{n-1}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Load the package and data.
+ Unless noted otherwise, the weekly returns of Microsoft (MSFT) will be
+ used as the asset return data.
+\end_layout
+
+\begin_layout Standard
+Note, use the weekly MSFT returns.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+suppressPackageStartupMessages(library(GARPFRM)) 
+\end_layout
+
+\begin_layout Plain Layout
+
+data(crsp_weekly)
+\end_layout
+
+\begin_layout Plain Layout
+
+R <- largecap_weekly[, "MSFT"]
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here we calculate the volatility estimates of the MSFT weekly returns using
+ the EWMA model.
+ We choose 
+\family typewriter
+lambda
+\family default
+ = 0.94.
+ The RiskMetrics database, originally created by J.P.
+ Morgan and made publicly available in 1994, uses the EWMA model with 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ = 0.94 for updating daily volatility in its RiskMetrics database.
+ An 
+\family typewriter
+initialWindow
+\family default
+ = 15 is specified to use the first 15 periods to calculate the initial
+ conditions, 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\strikeout off
+\uuline off
+\uwave off
+\noun off
+\color none
+
+\begin_inset Formula $\mu_{0}$
+\end_inset
+
+
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\bar default
+\strikeout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ and 
+\begin_inset Formula $\sigma_{0}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda <- 0.94 
+\end_layout
+
+\begin_layout Plain Layout
+
+initialWindow <- 15 
+\end_layout
+
+\begin_layout Plain Layout
+
+volEst <- EWMA(R, lambda, initialWindow, type="volatility") 
+\end_layout
+
+\begin_layout Plain Layout
+
+volEst
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+An important point to note is that we are using weekly returns to estimate
+ weekly volatility while the lambda value used in the RiskMetrics database
+ is for daily volatility estimates.
+ A data driven approach for selecting a value for 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ is to determine the 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ that minimizes the mean squared error between the realized volatility and
+ the estimated volatility from the EWMA model.
+\end_layout
+
+\begin_layout Standard
+Here we calculate the realized volatility defined as the equally weighted
+ average of the standard deviation of the previous 
+\begin_inset Formula $n$
+\end_inset
+
+ periods.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+vol <- realizedVol(R, n=5)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now we plot the estimated volatility from the EWMA model and the realized
+ volatility.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(vol, main="EWMA Volatility Estimate vs.
+ Realized Volatility")
+\end_layout
+
+\begin_layout Plain Layout
+
+lines(volEst$estimate, col="red") 
+\end_layout
+
+\begin_layout Plain Layout
+
+legend("topright", legend=c("Realized Volatility", 
+\end_layout
+
+\begin_layout Plain Layout
+
+"EWMA Volatility Estimate"),col=c("black", "red"), 
+\end_layout
+
+\begin_layout Plain Layout
+
+lty=c(1,1), cex=0.8, bty="n")
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The 
+\family typewriter
+estimateLambdaVol
+\family default
+ function estimates the value for 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ by minimizing the mean squared error between the realized volatility and
+ the EWMA model estimated volatility.
+\end_layout
+
+\begin_layout Standard
+1) estimate lambda
+\end_layout
+
+\begin_layout Standard
+2) then use initialWindow = 15 for the EWMA volatility estimate
+\end_layout
+
+\begin_layout Standard
+3) finally, 
+\begin_inset Formula $n$
+\end_inset
+
+ = 5 to calculate the realized volatility
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda <- estimateLambdaVol(R, initialWindow, n=5)
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+volEst2 <- EWMA(R, lambda, initialWindow, type="volatility") 
+\end_layout
+
+\begin_layout Plain Layout
+
+volEst2
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Here we plot the realized volatility along with the EWMA estimated volatility
+ with 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ = 0.94 and 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ = 0.7359253 to gain intuition through visualization of the EWMA volatility
+ estimates.
+\end_layout
+
+\begin_layout Standard
+1) plot realized volatility
+\end_layout
+
+\begin_layout Standard
+2) then EWMA volatility estimate
+\end_layout
+
+\begin_layout Standard
+3) finally, EWMA volatility estimate, lambda = 0.0.7359253
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(vol, main="EWMA Volatility Estimate vs.
+ Realized Volatility")
+\end_layout
+
+\begin_layout Plain Layout
+
+lines(volEst$estimate, col="red") 
+\end_layout
+
+\begin_layout Plain Layout
+
+lines(volEst2$estimate, col="blue")
+\end_layout
+
+\begin_layout Plain Layout
+
+legend("topright", legend=c("Realized Volatility",
+\end_layout
+
+\begin_layout Plain Layout
+
+"EWMA Volatility, lambda = 0.94","EWMA Volatility, 
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda = 0.7359253"), col=c("black", "red", "blue"), 
+\end_layout
+
+\begin_layout Plain Layout
+
+lty=c(1, 1, 1), cex=0.7, bty="n")
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now we move to using the EWMA model to calculate the covariance between
+ the returns of two assets.
+ Note that we set 
+\family typewriter
+lambda=NULL
+\family default
+ in the 
+\family typewriter
+EWMA
+\family default
+ function.
+ If 
+\family typewriter
+lambda = NULL
+\family default
+, the optimal $
+\backslash
+lambda$ value is estimated by minimizing the mean squared error between
+ the estimated covariance and realized covariance.
+\end_layout
+
+\begin_layout Standard
+The covariance between two variables, X and Y, is defined as 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\sigma_{XY}=E[(X-\mu_{X})(Y-\mu_{Y})]
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where: 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\mu$
+\end_inset
+
+
+\begin_inset Formula $_{X}$
+\end_inset
+
+ is the sample mean of X
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\mu_{Y}$
+\end_inset
+
+ is the sample mean of Y
+\end_layout
+
+\begin_layout Standard
+An EWMA model for the updating the covariance estimate between 
+\begin_inset Formula $X$
+\end_inset
+
+ and 
+\begin_inset Formula $Y$
+\end_inset
+
+ on day 
+\begin_inset Formula $n$
+\end_inset
+
+ is 
+\begin_inset Formula 
+\begin{equation}
+cov(X,Y)=\sigma_{XY,n}=\lambda\sigma_{XY,n-1}+(1-\lambda)X_{n-1}Y_{n-1}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Note: Use the first 2 columns of the large cap weekly returns
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+R <- largecap_weekly[,1:2] 
+\end_layout
+
+\begin_layout Plain Layout
+
+initialWindow <- 52 
+\end_layout
+
+\begin_layout Plain Layout
+
+covEst <- EWMA(R, lambda=NULL, initialWindow, n=10, "covariance") 
+\end_layout
+
+\begin_layout Plain Layout
+
+covEst 
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(covEst, main="EWMA Estimated Covariance")
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In a similar fashion, we can also use the EWMA model to calculate the correlatio
+n between the returns of two assets.
+\end_layout
+
+\begin_layout Standard
+The correlation between two variables, 
+\begin_inset Formula $X$
+\end_inset
+
+ and 
+\begin_inset Formula $Y$
+\end_inset
+
+, is defined as 
+\begin_inset Formula 
+\begin{equation}
+\rho_{XY}=\frac{cov(X,Y)}{\sigma_{X}\sigma_{Y}}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\sigma_{XY}$
+\end_inset
+
+ is the covariance between 
+\begin_inset Formula $X$
+\end_inset
+
+ and 
+\begin_inset Formula $Y$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\sigma_{x}$
+\end_inset
+
+ is the standard deviation of 
+\begin_inset Formula $X$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\sigma_{y}$
+\end_inset
+
+ is the standard deviation of 
+\begin_inset Formula $Y$
+\end_inset
+
+ In a similar fashion, we can also use the EWMA model to calculate the correlati
+on between the returns of two assets.
+\end_layout
+
+\begin_layout Standard
+The EWMA mdoel for correlation is calculated using an EWMA model for the
+ estimated covariancebetween X and Y, estimated volatility of X, and estimated
+ volatility of Y.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+corEst <- EWMA(R, lambda=NULL, initialWindow, n=10, "correlation") 
+\end_layout
+
+\begin_layout Plain Layout
+
+corEst 
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(corEst, main="EWMA Estimated Correlation")
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The previous examples demonstrated using an EWMA model to estimate the volatilit
+y of the returns of a single asset, and the correlation and volatility between
+ the returns of two assets.
+ Now we move to using an EWMA model to estimated the covariance and correlation
+ of a multivariate data set.
+\end_layout
+
+\begin_layout Standard
+1) use the first 4 columns of the largecap_weekly dataset 
+\end_layout
+
+\begin_layout Standard
+2) then calculate the sample covariance matrix 
+\end_layout
+
+\begin_layout Standard
+3) finally followec by EWMA covariance matrix estimate
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+R <- largecap_weekly[,1:4]
+\end_layout
+
+\begin_layout Plain Layout
+
+sample_cov <- cov(R) 
+\end_layout
+
+\begin_layout Plain Layout
+
+sample_cov
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda <- 0.94 
+\end_layout
+
+\begin_layout Plain Layout
+
+initialWindow <- 52 
+\end_layout
+
+\begin_layout Plain Layout
+
+covEst <- EWMA(R, lambda, initialWindow, type="covariance") 
+\end_layout
+
+\begin_layout Plain Layout
+
+covEst
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In a similar fashion, we can also use the EWMA model to estimate the correlation
+ matrix.
+\end_layout
+
+\begin_layout Standard
+1) calculate the sample covariance matrix 
+\end_layout
+
+\begin_layout Standard
+2) then the EWMA covariance matrix is estimated
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+sample_cor <- cor(R) 
+\end_layout
+
+\begin_layout Plain Layout
+
+sample_cor
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+lambda <- 0.94 
+\end_layout
+
+\begin_layout Plain Layout
+
+initialWindow <- 52 
+\end_layout
+
+\begin_layout Plain Layout
+
+corEst <- EWMA(R, lambda, initialWindow, type="correlation") 
+\end_layout
+
+\begin_layout Plain Layout
+
+corEst
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+The GARCH(1,1) Model
+\end_layout
+
+\begin_layout Standard
+We now demonstrate the generalized autoregressive conditional heteroskedasticity
+ (GARCH) as presented by Bollerslev in 1986 as a way to estimate volatility.
+ The general GARCH(p,q) model calculates 
+\begin_inset Formula $\sigma_{n}^{2}$
+\end_inset
+
+ from the most recent 
+\begin_inset Formula $p$
+\end_inset
+
+ observations of 
+\begin_inset Formula $u^{2}$
+\end_inset
+
+ and the most recent 
+\begin_inset Formula $q$
+\end_inset
+
+ estimates of 
+\begin_inset Formula $\sigma_{n}^{2}$
+\end_inset
+
+.
+ The GARCH(1,1) model refers to the most recent observation of 
+\begin_inset Formula $u^{2}$
+\end_inset
+
+ and the most recent estimate of 
+\begin_inset Formula $\sigma_{n}^{2}$
+\end_inset
+
+.
+ The GARCH(1,1) is a popular model and the one we will focus on.
+ The equation for the GARCH(1,1) model is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\sigma_{n}^{2}=\gamma V_{L}+\alpha u_{n-1}^{2}+\beta\sigma_{n-1}^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+where: 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\gamma$
+\end_inset
+
+ is the weight assigned to 
+\begin_inset Formula $V_{L}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $V_{L}$
+\end_inset
+
+ is the long-run average variance rate 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\alpha$
+\end_inset
+
+ is the weight assigned to 
+\begin_inset Formula $u_{n-1}^{2}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $u_{n-1}$
+\end_inset
+
+ is the squared returns of preiod 
+\begin_inset Formula $n-1$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\beta$
+\end_inset
+
+ is the weight assigned to 
+\begin_inset Formula $\sigma_{n-1}^{2}$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\sigma{}_{n-1}^{2}$
+\end_inset
+
+ is the estimated variance rate of period 
+\begin_inset Formula $n-1$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Standard
+The weights must sum to 1 such that 
+\begin_inset Formula 
+\begin{equation}
+\gamma+\alpha+\beta=1
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It should be noted that the EWMA model discussed in the previous section
+ is a special case of the GARCH(1,1) model where 
+\begin_inset Formula $\gamma=0$
+\end_inset
+
+, 
+\begin_inset Formula $\alpha=1-\lambda$
+\end_inset
+
+, and 
+\begin_inset Formula $\beta=\lambda$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+A more common form of the model is obtained by setting 
+\begin_inset Formula $\omega=\gamma V_{L}$
+\end_inset
+
+ such that the equation for the model is
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+\sigma_{n}^{2}=\omega+\alpha u_{n-1}^{2}+\beta\sigma_{n-1}^{2}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+With the estimated parameters for 
+\begin_inset Formula $\omega$
+\end_inset
+
+, 
+\begin_inset Formula $\alpha$
+\end_inset
+
+, and 
+\begin_inset Formula $\beta$
+\end_inset
+
+, we can calculate 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ and 
+\begin_inset Formula $V_{L}$
+\end_inset
+
+ as 
+\begin_inset Formula 
+\begin{eqnarray}
+\gamma & = & 1-\alpha-\beta\\
+V_{L} & = & \omega/\gamma
+\end{eqnarray}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+A key characteristic of the GARCH(1,1) model is mean reversion, i.e.
+ the variance rate is pulled back to the long-run average variance rate
+ over time.
+ In contrast, the EWMA model is not mean reverting.
+\end_layout
+
+\begin_layout Subsection
+Estimating GARCH(1,1) Parameters
+\end_layout
+
+\begin_layout Standard
+Estimating the parameters for the GARCH model requires an optimization routine
+ to maximize the likelihood.
+ The FRM text describes an example of using a spreadsheet and a solver,
+ e.g.
+ the Microsoft Excel Solver.
+ The implementation of GARCH in the GARPFRM package 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "GARPFRM"
+
+\end_inset
+
+ utilizes the rugarch package 
+\begin_inset CommandInset citation
+LatexCommand citep
+key "rugarch"
+
+\end_inset
+
+.
+ The implementation in the rugarch package uses C code for a fast and efficient
+ algorithm for the main part of the likelihood calculation.
+\end_layout
+
+\begin_layout Standard
+\noindent
+Here we demonstrate how to specify and fit a GARCH(1,1) model using weekly
+ returns for Microsoft.
+ 
+\end_layout
+
+\begin_layout Standard
+1) use the weekly MSFT returns
+\end_layout
+
+\begin_layout Standard
+2) specify and fit the MSFT returns to a standard ARMA(0,0)-GARCH(1,1) model
+ 
+\end_layout
+
+\begin_layout Standard
+\noindent
+Note that the default is ARMA(1,1)-GARCH(1,1) so we only need to change
+ the ARMA order.
+ The default arguments were chosen to be consistent with the default arguments
+ in rugarch.
+\end_layout
+
+\begin_layout Standard
+3) first get the fitted GARCH model
+\end_layout
+
+\begin_layout Standard
+4) followed by getting the coefficients
+\end_layout
+
+\begin_layout Standard
+5) then show the summary results of the fit
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+R <- largecap_weekly[,"MSFT"]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+model <- uvGARCH(R, armaOrder=c(0,0))
+\end_layout
+
+\begin_layout Plain Layout
+
+fit <- getFit(model)
+\end_layout
+
+\begin_layout Plain Layout
+
+coef(fit)
+\end_layout
+
+\begin_layout Plain Layout
+
+fit
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Using GARCH(1,1) to Forecast Future Volatility
+\end_layout
+
+\begin_layout Standard
+Conduct a 
+\begin_inset Formula $n$
+\end_inset
+
+ period ahead forecast and make a plot of the forecast.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+forecast10 <- forecast(model, nAhead=10) 
+\end_layout
+
+\begin_layout Plain Layout
+
+forecast10
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(forecast10, which=3)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+Now we specify and fit a model with 
+\family typewriter
+outSample=100
+\family default
+ so that we can use the last 100 data points for out of sample testing and
+ do a rolling forecast and plot the rolling forecast.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+model11 <- uvGARCH(R, armaOrder=c(0,0), outSample=100) 
+\end_layout
+
+\begin_layout Plain Layout
+
+forecast2 <- forecast(model11, nRoll=10) 
+\end_layout
+
+\begin_layout Plain Layout
+
+forecast2
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(forecast2, which=4)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "GARPFRM"
+options "bibtotoc"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document

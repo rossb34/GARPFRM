@@ -1,0 +1,305 @@
+\documentclass[a4paper]{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{Performance Measures}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+opts_chunk$set(cache=TRUE, tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+\title{Performance Analysis Measures}
+\author{Mark L Labovitz and Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate applying the CAPM to performance measurement using computations as interpreted from Chapter 7 of Financial Risk Manager Part 1: Foundations of Risk Management.
+\end{abstract}
+
+\tableofcontents
+
+\section{Setting Up The Analysis}
+This vignette presents methods for calcuating risk adjusted performance measures. Calculating risk adjusted performance enables us to compare assets with different levels of risk. We rely on the \verb"PerformanceAnalytics" package \citep{PerformanceAnalytics} for computing the performance measures in this vignette. The \verb"PerformanceAnalytics" package includes functions for all measures discussed in this vignette and several others.
+
+This vignette focuses on computing the following performance measures:
+\begin{enumerate}
+  \item Treynor Ratio
+  \item Sharpe Ratio
+  \item Jensen's alpha
+  \item Tracking Error
+  \item Information Ratio
+  \item Sortino Ratio
+\end{enumerate}
+
+\subsection{Loading the Package and Preparing Data}
+Here we load the \verb"GARPFRM" package \citep{GARPFRM} and set up the data. For our portfolio, we will construct an equal weight portfolio of the first 10 assets in \code{largecap.ts}. We will consider the market returns in the dataset as our benchmark portfolio for all examples unless otherwise noted.
+<<ex2>>=
+# Load the GARPFRM package and the CRSP dataset.
+suppressPackageStartupMessages(library(GARPFRM))
+Sys.setenv(TZ="GMT")
+data(crsp.short)
+
+# Market returns
+R.market <- largecap.ts[, "market"]
+indexTZ(R.market) <- "GMT"
+
+# risk free rate
+rf <- largecap.ts[,"t90"]
+indexTZ(rf) <- "GMT"
+
+# The portfolio we will consider is an equal weight portfolio of the first 
+# 10 assets in largecap.ts
+R.portfolio <- Return.portfolio(largecap.ts[,1:10])
+indexTZ(R.portfolio) <- "GMT"
+
+# Precompute excess returns
+R.Ex.portfolio <- R.portfolio - rf
+R.Ex.market <- R.market - rf
+@
+
+\section{Treynor Ratio}
+The Treynor ratio developed by Jack L. Treynor, is one in a set of risk-adjusted measures of performance. It is also known as a reward-to-variability ratio. The Treynor Ratio is calculated as the average excess return divided by the portfolio $\beta$ over the same time period. The $\beta$ as described below is the slope of the security line. A higher Treynor Ratio means better portfolio performance in excess of the risk-free asset performance after adjusting for the market risk associated with a benchmark or market portfolio. Treynor Ratio and some other performance measures are subject to the criticism of arbitariness arising out of the requirement to select a benchmark or market portfolio.
+
+
+\noindent The Treynor Ratio is defined by
+\begin{equation*}
+T_P = \frac{E(R_p) - R_F}{\beta_P}
+\end{equation*}
+
+where
+\begin{description}
+  \item[$E(R_P)$] denotes the expected return of the portfolio.
+  \item[$R_F$] denotes the return on the risk-free asset (also the risk-free-rate).
+  \item[$\beta_P$] denotes the beta of the portfolio.
+\end{description}
+
+\subsection{Beta}
+At this point, it is good to present $\beta$ and how it is computed. $\beta$ is a measure of systematic risk or volatility (as opposed to nonsystematic or diversifiable risk) of a portfolio relative to a benchmark or market portfolio. 
+
+The common computation of $\beta$ is the ratio of the covariance of the portfolio and benchmark portfolio returns divided by the variance of the market portfolio returns.
+\begin{equation*}
+\beta = \frac{\sigma_{R_P R_M}}{\sigma_{R_M}^2}
+\end{equation*}
+
+where
+\begin{description}
+  \item[$\sigma_{R_P R_M}$] denotes the covariance between the portfolio returns and market returns.
+  \item[$\sigma_{R_M}^2$] denotes the variance of the market returns.
+\end{description}
+
+
+The portfolio $\beta$ can also be computed from the CAPM. This the identical to the slope value in the estimation of a simple linear regression. From this computation, it should be clear that the beta of the benchmark portfolio versus itself is 1.0. Consequently, any portfolio having a $\beta$ greater than 1.0 possesses greater systematic volatility than the market and less systematic volatility than the market for a $\beta$ less than 1.0. The confidence in the predictive value of beta may be qualified by an $R^2$ that approaches one.
+
+
+Here we compute the portfolio $\beta$ using both methods. In this situation, $\beta$ is computed using excess portfolio returns and excess market returns. It should be noted that using the excess returns to compute $\beta$ is not the only option, but is consistent with the CAPM.
+
+<<ex6>>=
+# Compute portfolio beta using the covariance of the portfolio and benchmark 
+# portfolio returns divided by the variance of the market portfolio returns
+cov(R.Ex.portfolio, R.Ex.market) / var(R.Ex.market)
+
+# Compute beta using CAPM
+fit <- CAPM(R.Ex.portfolio, R.Ex.market)
+getBetas(fit)
+
+# We can also directly use the CAPM.beta function from PerformanceAnalytics
+CAPM.beta(R.portfolio, R.market, rf)
+@
+
+\subsection{Treynor Ratio}
+Here we compute the Treynor Ratio. We can also compare the Treynor Ratio for the investment portfolio versus the Treynor Ratio for the market portfolio to check whether or not the investment portfolio is being sufficiently rewarded for its level of risk. In this example, we see that the portfolio Treynor Ratio is greater than the market Treynor Ratio.
+<<ex7>>=
+# Treynor ratio for portfolio and market
+
+# Treynor Ratio for portfolio
+TreynorRatio(R.portfolio, R.market, rf)
+
+# Treynor Ratio for market
+TreynorRatio(R.market, R.market, rf)
+@
+
+\section{Sharpe Ratio}
+The Sharpe Ratio was developed by Nobel Laureate William F. Sharpe as a risk-adjusted measure of performance, also known as the reward-to-volatility or reward per unit of risk ratio. It is calculated as the expected excess returns of the portfolio divided by the standard deviation of the portfolio returns. A higher Sharpe ratio means better fund performance relative to the risk-free rate on a risk-adjusted basis.
+
+
+\noindent The Sharpe Ratio is defined by
+\begin{equation*}
+S_P = \frac{E(R_P) - R_F}{\sigma(R_P)}
+\end{equation*}
+
+where
+\begin{description}
+  \item[$E(R_P)$] denotes the expected return of the portfolio.
+  \item[$R_F$] denotes the return on the risk-free asset (also the risk-free-rate).
+  \item[$\sigma(R_P)$] denotes standard deviation of the portfolio returns.
+\end{description}
+
+<<ex9>>=
+# Compute Sharpe and annualized Sharpe Ratio
+# Sub-period Sharpe Ratio
+SharpeRatio(R.portfolio, rf, FUN="StdDev")
+
+# Annualized Sharpe Ratio
+SharpeRatio.annualized(R.portfolio, rf)
+@
+
+We can also calculate a modified Sharep Ratio where the denominator is a measure of downside risk rather than volatility. Here we calculate a modified Sharpe Ratio using Value at Risk (VaR) and Expected Shortfall (ES) as downside risk measures.
+<<>>=
+SharpeRatio(R.portfolio, rf, p=0.95, FUN=c("VaR", "ES"))
+@
+
+
+\section{Jensen's Alpha}
+Jensen's alpha in a finance context attempts to formalize the measure of the difference between an asset's actual return over a specified period versus the expected return using its systematic volatility relative to the market as measured by the $\beta$ coefficient (see the discussion of $\beta$ above). From a mathematical or statistical context, $\alpha$ is the expected return of a portfolio when the market portfolio has an expected return equal to 0. 
+
+
+In a simple linear regression, $\alpha$ is the intercept term. A higher $\alpha$ is better than a lower $\alpha$ since it indicates added value for a given level of risk and implies that the portfolio is expected to perform better than its $\beta$ would predict. Conversely, a negative $\alpha$ indicates a portfolio is expected to under perform the expectations established by the $\beta$ relating the portfolio returns to the market returns. However, confidence in $\alpha$ must be qualified by the strength of r-squared in the $\beta$ calculation as well as testing the statistical significance of the estimated $\alpha$ and $\beta$. 
+
+
+\noindent Jensen's alpha is defined by
+\begin{eqnarray*}
+E(R_P) - R_F = \alpha_P + \beta_P (E(R_M) - R_f)\\
+\alpha_P = E(R_P) - R_F - \beta_P (E(R_M) - R_f)
+\end{eqnarray*}
+
+where
+\begin{description}
+  \item[$E(R_P)$] denotes the expected portfolio return.
+  \item[$E(R_B)$] denotes the expected market portfolio return.
+  \item[$R_F$] denotes the return of the risk-free asset
+  \item[$\beta_P$] denotes the portfolio $\beta$.
+  \item[$\alpha_P$] denotes the portfolio $\alpha$.
+\end{description}
+
+Here we compute Jensen's alpha. We see that the alpha value after carrying out the regression is $0.008923$ and the p-value is $0.139$. A common confidence level chosen to test the statistical significance is 95\%. At a 95\% confidence level we cannot reject the null hypothesis that $\alpha = 0$. Therefore, the $\alpha$ value is not significantly different from 0. It should be noted that the PerformanceAnalytics function to calculate Jensen's alpha uses a slightly different approach.
+<<ex10>>=
+# Compute Jensen's alpha by carrying out a linear regression
+fit <- lm(R.Ex.portfolio ~ R.Ex.market)
+alpha <- coef(fit)[1]
+p_value <- coef(summary(fit))[1,4]
+summary(fit)
+
+# Compute Jensen's alpha with PerformanceAnalytics function
+CAPM.jensenAlpha(R.portfolio, R.market, mean(rf))
+
+# Replicate CAPM.jensenAlpha
+# Compute annualized returns
+R.P <- Return.annualized(R.portfolio)
+R.M <- Return.annualized(R.market)
+# Compute the CAPM beta
+beta <- CAPM.beta(R.portfolio, R.market, mean(rf))
+
+# Jensen's alpha
+R.P - mean(rf) - beta * (R.M - mean(rf))
+@
+
+\section{Tracking Error}
+Tracking Error is a measure of the deviation of the investment portfolio from benchmark or market portfolio. It is calculated as the standard deviation of the relative returns over a given period. The smaller the tracking error, the more the portfolio resembles or is consistent with the risk and return characteristics of the market or benchmark portfolio.
+
+
+\noindent An estimate of the TE is given by
+\begin{equation*}
+TE = \sigma(R_P - R_B)
+\end{equation*}
+
+where
+\begin{description}
+  \item[$R_P$] denotes the portfolio returns.
+  \item[$R_B$] denotes the benchmark returns.
+  \item[$\sigma(R_P - R_B)$] denotes the standard deviation of the relative returns.
+\end{description}
+
+Here we compute the Tracking Error of the portfolio relative to a benchmark portfolio where we take the market portfolio as our benchmark portfolio.
+<<ex11>>=
+# Compute Tracking Error
+TrackingError(R.portfolio, R.market)
+
+# Replicate TrackingError
+sd(R.portfolio - R.market) * sqrt(12)
+@
+
+\section{Information Ratio}
+The Information Ratio is another risk-adjusted measure of investment portfolio performance relative to market or benchmark portfolio performance. Nobel laureate William Sharpe developed this ratio as a straightforward way to evaluate the return of an portfolio, given the level of systematic risk assumed in comparison to a benchmark. As a consequence, the difference from the Sharpe Ratio is that the standard deviation of excess returns is replaced as a normalization denominator measure by a measure incorporating risk as related  to deviations from a benchmark or market portfolio.  It is calculated as the average relative return (ARR) divided by the tracking error over a given period. A higher Information Ratio indicates better portfolio performance relative to a benchmark portfolio performance on a risk-adjusted basis. Information Ratio is subject to the same criticism of arbitrariness of choosing a benchmark portfolio previously discussed.
+
+
+\noindent An estimate of the Information Ratio is given by:
+\begin{equation*}
+IR = \frac{E(R_P) - E(R_B)}{\sigma(R_P - R_B)}
+\end{equation*}
+
+where
+\begin{description}
+  \item[$E(R_P)$] denotes the expected portfolio return.
+  \item[$E(R_B)$] denotes the expected benchmark portfolio return.
+  \item[$\sigma(R_P - R_B)$] denotes the standard deviation of the relative returns.
+\end{description}
+
+Here we compute the Tracking Error of the portfolio relative to a benchmark portfolio where we take the market portfolio as our benchmark portfolio.
+<<ex12>>=
+# Compute Information Ratio
+# InformationRatio = ActivePremium / TrackingError
+# Active Premium = Investment's annualized return - Benchmark's annualized return
+InformationRatio(R.portfolio, R.market)
+
+# Replicate the Information Ratio computation
+activePremium <- Return.annualized(R.portfolio) - Return.annualized(R.market)
+trackingError <- TrackingError(R.portfolio, R.market)
+activePremium / trackingError
+@
+
+\section{Downside Deviation and Sortino Ratio}
+The Sortino Ratio is similar to the Sharpe Ratio in that it is a risk adjusted return measure. A criticism of the Sharpe Ratio is that the standard deviation of returns, the denomoninator in the Sharpe Ratio, measures the deviation in positive returns as well as negative returns. An alternative is to use the deviation of returns below a specified value as a downside risk measure.
+
+\subsection{Downside Deviation}
+Downside Deviation is a measure of risk which just captures the downside of returns below a minimal acceptible return (MAR). Consequently, the computation only includes as non-zero those returns less than the MAR. MAR in the present case is set as a single value. In other calculations, MAR is a time series, often the  market or benchmark returns. As downside deviation increases it means higher risk on the downside relative to the MAR. Beyond the MAR, an important parametric consideration is the decision to normalize the deviations by the total number of values in the time series or just the number of deviations which are not equal to zero.
+
+% \noindent An estimate of the DD is given by:
+% \begin{equation*}
+% \hat{DD} = \frac{1}{adjusted(nsp)-1}\sum_{i=1}^{nsp} {(\min{((IP_{i}-MAR_{i}),0}))}^2 
+% \end{equation*}
+
+<<ex13>>=
+
+# Compute Downside Deviation
+MAR <- 0
+# PA computation of Downside Deviation
+DownsideDeviation(R.portfolio, MAR)
+@
+
+\subsection{Sortino Ratio}
+The Sortino ratio is a measure of the behavior of an investment portfolio relative to a benchmark or market portfolio's performance adjusted for downside risk. Many author's consider it to be a variant of the Sharpe ratio that differentiates between beneficial (upside) and detrimental (downside) volatility. It is calculated as the average relative return (ARR) divided by the downside deviation (DD) over a given period. A higher Sortino ratio means better fund performance relative to benchmark performance adjusted for downside risk.
+
+
+\noindent An estimate of the Sortino Ratio is given by:
+\begin{equation*}
+SortinoRatio = \frac{E(R_P) - MAR}{DD(MAR)}
+\end{equation*}
+
+where
+\begin{description}
+  \item[$E(R_P)$] denotes the expected portfolio return.
+  \item[$MAR$] denotes the Minimum Acceptable Return.
+  \item[$DD(MAR)$] denotes the Downside Deviation of the given MAR.
+\end{description}
+
+Here we compute the Sortino Ratio for our portfolio. See \code{?SortinoRatio} for further discussion of the Sortino Ratio and choosing a MAR.
+<<ex14>>=
+# Compute Sortino Ratio 
+SortinoRatio(R.portfolio, MAR)
+@
+
+\bibliography{GARPFRM}
+
+\end{document}

@@ -1,0 +1,501 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+%\VignetteIndexEntry{Quantitative Analysis Basics}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+\begin{document}
+
+\title{Quantitative Analysis}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The goal of this vignette is to demonstrate key concepts in Financial Risk Manager (FRM \textsuperscript{\textregistered}) Part 1: Quantitative Analysis using R and the GARPFRM package \citep{GARPFRM}. This vignette will cover exploratory data analysis, basic probability and statistics, and linear regression.
+\end{abstract}
+
+\tableofcontents
+
+\section{Exploratory Data Analysis}
+
+Load the GARPFRM package and the \verb"crsp.short" dataset. Other packages are also loaded for plotting functions. The \verb"crsp.short" dataset contains monthly returns from 1997-01-31 to 2001-12-31 of stocks in micro, small, mid, and large market capitalizations as well as market returns and the risk free rate. The market is defined as the value weighted NYSE and NYSE Amex, the latter formerly being the American Stock Exchange and the NASDAQ composite. The risk free rate comes from the 90 day Treasury Bill.
+<<>>=
+suppressMessages(library(GARPFRM))
+suppressMessages(library(lattice))
+suppressMessages(library(pcaPP))
+suppressMessages(library(hexbin))
+data(crsp.short)
+
+# Use the first 6 stocks in largecap.ts
+crsp.returns <- largecap.ts[, 1:6]
+
+# Get the names of the stocks and view the first 5 rows of crsp.returns
+colnames(crsp.returns)
+head(crsp.returns, 5)
+@
+
+
+Plot of the returns of each asset.
+<<>>=
+xyplot(crsp.returns, scale=list(y="same"), main="Monthly Returns")
+@
+
+Another way to compare returns of several assets is with a boxplot.
+<<>>=
+boxplot(coredata(crsp.returns), pch=20, main="Monthly Returns")
+@
+
+The exploratory data analysis, basic probability and statistics will use the market returns.
+<<>>=
+# Extract the column labeled "market" to get the market returns
+MKT.ret <- largecap.ts[, "market"]
+@
+
+
+Plot of the MKT monthly returns. 
+<<>>=
+plot(MKT.ret, main="Market Monthly Returns")
+@
+
+A histogram and kernel density estimate of the market returns is plotted to better understand its distribution. 
+<<tidy=FALSE>>=
+hist(MKT.ret, probability=TRUE, main="Histogram of Market Returns", 
+     col="lightblue", ylim=c(0, 10))
+lines(density(MKT.ret), lty=2)
+rug(MKT.ret)
+legend("topleft", legend="kernel density estimate", lty=2,
+       cex=0.8, bty="n")
+@
+
+
+A normal density is overlayed on the plot of the kernel density estimate with standard estimates of the sample mean and standard deviation. Another normal density is overlayed using robust estimates. It is clear from the chart that neither the robust estimates nor the standard estimates of the sample mean and sample standard deviation provide a visually goot fit. It appears that the kernel density estimate of the market returns is bimodal.
+<<>>=
+# Plot the kernel density estimate of market returns
+plot(density(MKT.ret), main="Density of Market Returns")
+rug(MKT.ret)
+# sample estimates
+curve(dnorm(x, mean=mean(MKT.ret), sd=sd(MKT.ret)), 
+      add=TRUE, col="red", lty=2, lwd=2)
+# robust estimates
+curve(dnorm(x, mean=median(MKT.ret), sd=mad(MKT.ret)), 
+      add=TRUE, col="blue", lty=2, lwd=2)
+legend("topleft", legend=c("kernel density estimate", "normal density estimate", 
+                           "robust normal density estimate"), 
+       col=c("black", "red", "blue"), lty=c(1, 2, 2), bty="n", cex=0.8)
+@
+
+Quantile-Quantile plot of market returns with a 95\% confidence envelope. It can be seen from the Normal Q-Q plot that the tails of the market returns are well outside of the 95\% confidence envelope.
+<<tidy=FALSE>>=
+chart.QQPlot(MKT.ret, envelope=0.95, pch=18, main="Market Returns QQ Plot",
+             xlab="Theoretical Normal Quantiles")
+legend("topleft", legend=c("Quartile-Pairs Line", "95% Confidence Envelope"), 
+       col=c("blue", "blue"), lty=c(1, 2), cex=0.8, bty="n")
+@
+
+We can test if the market returns came from a normal distribution using the Shapiro-Wilk test of normality. The null hypothesis is that the data came from a normal distribution. The p-value is less than 0.05 and the null hypothesis can be rejected at a 95\% confidence level.
+
+<<>>=
+shapiro.test(coredata(MKT.ret))
+@
+
+\subsection{Basic Statistics}
+Here we calculate some basic statisitics on the market returns.
+<<>>=
+# Sample mean of SPY return
+mean(MKT.ret)
+
+# Sample Variance of SPY returns
+var(MKT.ret)
+
+# Sample standard deviation of SPY returns
+sd(MKT.ret)
+
+# Standard error of SPY returns
+sd(MKT.ret) / sqrt(nrow(MKT.ret))
+
+# Sample skewness of SPY returns.
+# See ?skewness for additional methods for calculating skewness
+skewness(MKT.ret, method="sample")
+
+# Sample kurtosis of SPY returns.
+# See ?kurtosis for additional methods for calculating kurtosis
+kurtosis(MKT.ret, method="sample")
+
+# Summary statistics of SPY returns
+summary(MKT.ret)
+
+# Sample quantiles of SPY returns
+quantile(MKT.ret, probs=c(0, 0.25, 0.5, 0.75, 1))
+@
+
+Scatter plot of each pair of assets. This can be useful to visually look for relationships among the assets.
+<<tidy=FALSE>>=
+pairs(coredata(crsp.returns), pch=20, col=rgb(0,0,100,50,maxColorValue=255))
+hexplom(coredata(crsp.returns), varname.cex=0.75)
+@
+
+Correlation and covariance matrices of the assets.
+<<>>=
+# Sample correlation of returns
+cor(crsp.returns)
+@
+
+<<echo=FALSE>>=
+suppressWarnings(plotcov(cor(crsp.returns), 
+                         method1="Sample Correlation Estimate"))
+@
+
+<<>>=
+# Sample covariance of returns
+cov(crsp.returns)
+@
+
+<<echo=FALSE>>=
+suppressWarnings(plotcov(cov(crsp.returns), 
+                         method1="Sample Covariance Estimate"))
+@
+
+
+\subsection{Distributions}
+R has functions to compute the density, distribution function, quantile, and random number generation for several distributions. The continuous distributions covered in chapter 1 are listed here.
+\begin{itemize}
+\item Normal Distribution: \verb"dnorm", \verb"pnorm", \verb"qnorm", \verb"rnorm"
+
+\item Chi-Squared Distribution: \verb"dchisq", \verb"pchisq", \verb"qchisq", \verb"rchisq"
+
+\item Student t Distribution: \verb"dt", \verb"pt", \verb"qt", \verb"rt"
+
+\item F Distribution: \verb"df", \verb"pf", \verb"qf", \verb"rf"
+\end{itemize}
+
+In general, the functions are as follows:
+\begin{itemize}
+\item d*: density
+\item p*: distribution function (probability)
+\item q*: quantile function
+\item r*: random number generation
+\end{itemize}
+where * is the appropriate distribution.
+
+Here we demonstrate these functions for the normal distribution.
+
+Use dnorm to plot the pdf of a standard normal distribution
+<<>>=
+curve(dnorm(x), from=-4, to=4, main="Standard Normal pdf")
+@
+
+Calculate the probability that $Y \leq 2$ when $Y$ is distributed $N(1, 4)$ with mean of 1 and variance of 4.
+<<>>=
+pnorm(q=2, mean=1, sd=2)
+# Normalize as is done in the book
+pnorm(q=0.5)
+@
+
+Quantile function of the standard normal distribution at probability 0.975.
+<<>>=
+qnorm(p=0.975)
+@
+
+Generate 10 random numbers from a normal distribution with mean 0.0015 and standard deviation 0.025.
+<<>>=
+# Set the seed for reproducible results
+set.seed(123)
+rnorm(n=10, mean=0.0015, sd=0.025)
+@
+
+\subsection{Hypothesis Test}
+The null hypothesis is that the true mean return of the market is equal to 0.
+<<tidy=FALSE>>=
+t.test(x=MKT.ret, alternative="two.sided", mu=0)
+@
+The p-value is greater than 0.05 so the null hypothesis cannot be rejected at a 95\% confidence level.
+
+<<>>=
+# Replicate the results of t.test using the method outlined in the book
+t_stat <- (mean(MKT.ret) - 0) / (sd(MKT.ret) / sqrt(nrow(MKT.ret)))
+p_value <- 2 * pt(q=-abs(t_stat), df=nrow(MKT.ret))
+df <- nrow(MKT.ret) - 1
+ci <- mean(MKT.ret) + c(-1, 1) * 1.96 * sd(MKT.ret) / sqrt(nrow(MKT.ret))
+paste("t = ", round(t_stat, 4), ", df = ", df, ", p-value = ", 
+      round(p_value, 4), sep="")
+print("95% Confidence Interval")
+print(ci)
+@
+Note that the confidence interval is different. This is because the \verb"t.test" function calculates the exact confidence interval. Using a value of 1.96 is an approximation.
+
+\section{Regression}
+\subsection{Regression with a single regressor}
+
+The general form of a linear model is:
+\begin{equation}
+Y_i = \beta_0 + \beta_i X_i + u_i
+\end{equation}
+
+where:
+\begin{itemize}
+\item[$Y_i$]{ is the dependent variable}
+\item[$X_i$]{ is the independent variable}
+\item[$\beta_0$]{ is the intercept of the population regression line}
+\item[$\beta_1$]{ is the slope of the population regression line}
+\item[$u_i$]{ is the error term}
+\end{itemize}
+
+In the following linear model, CAT excess returns is the dependent variable and market excess returns is the independent variable. This model will be used to demonstrate linear regression in R.
+
+Extract the weekly returns of CAT from the returns object.
+<<>>=
+CAT.ret <- crsp.returns[, "CAT"] - largecap.ts[, "t90"]
+MKT.ret <- largecap.ts[, "market"] - largecap.ts[, "t90"]
+
+# Fitting linear models works with xts objects, but works better with data.frame objects. This is especially true with the predict method for linear models.
+ret.data <- as.data.frame(cbind(CAT.ret, MKT.ret))
+@
+
+Scatterplot of CAT and market excess returns.
+<<tidy=FALSE>>=
+plot(coredata(MKT.ret), coredata(CAT.ret), pch=19,
+     col=rgb(0,0,100,50,maxColorValue=255),
+     xlab="Market returns", ylab="CAT returns",
+     main="CAT vs. Market Excess Returns")
+@
+
+Fit the linear regression model. \verb"CAT.ret" is the response variable and \verb"MKT.ret" is the explanatory variable. That is, a linear model will be fit using market excesss returns to describe CAT excess returns.
+<<>>=
+model.fit <- lm(CAT ~ market, data=ret.data)
+@
+
+The \verb"print" and \verb"summary" methods for \verb"lm" objects are very useful and provide several of the statistics covered in the book. Note that \verb"summary(model.fit)" will print the summary statisitcs, but it is often useful to assign the summary object to a variable so that elements from the summary object can be extracted as shown below.
+<<>>=
+# The print method displays the call and the coefficients of the linear model
+model.fit
+
+# The summary method displays additional information for the linear model
+model.summary <- summary(model.fit)
+model.summary
+@
+
+The results of the fitted model show that the equation for the linear model can be written as
+\begin{equation}
+\hat{CAT.ret}_i = 0.004892 + 0.602402 * MKT.ret_i + 0.09310604
+\end{equation}
+
+Examples of useful methods to access elements of the \verb"lm" object
+<<>>=
+# Note that some are commented out
+
+# Coefficients
+coef(model.fit)
+# Extract the fitted values
+head(fitted(model.fit))
+# Extract the residuals
+head(resid(model.fit))
+# Exctract the standardized residuals
+head(rstandard(model.fit))
+@
+
+Access elements of the \verb"lm.summary" object
+<<>>=
+# Coefficients
+model.coef <- coef(model.summary)
+model.coef
+
+# Sigma
+model.summary$sigma
+# R squared
+model.summary$r.squared
+# Adjusted R squared
+model.summary$adj.r.squared
+@
+
+Accessing elements of the models can be ued to compute measures of fit. Some measures of fit, such as the $R^2$, adjusted $R^2$, and standard error of regression are computed by the \verb"summary" function and just need to be extracted.
+
+\subsubsection{Measures of Fit}
+Explained sum of squares (ESS)
+\begin{equation}
+ESS = \sum_{i=1}^n (\hat{Y}_i - \bar{Y})^2
+\end{equation}
+<<>>=
+ESS <- sum((fitted(model.fit) - mean(CAT.ret))^2)
+@
+
+Total sum of squares (TSS)
+\begin{equation}
+TSS = \sum_{i=1}^n (Y_i - \bar{Y})^2
+\end{equation}
+<<>>=
+TSS <- sum((CAT.ret - mean(CAT.ret))^2)
+@
+
+Sum of squared residuals (SSR)
+\begin{equation}
+SSR = \sum_{i=1}^n (\hat{u}_i)^2
+\end{equation}
+<<>>=
+SSR <- sum(resid(model.fit)^2)
+@
+
+The regression $R^2$ is the fraction of the sample variance of $Y_i$ explained by $X_i$. The $R^2$ can be extracted from the \verb"model.summary" object.
+<<>>=
+r_squared <- model.summary$r.squared
+r_squared
+@
+
+The $R^2$ can also be computed using the ESS, TSS, and SSR.
+<<>>=
+ESS / TSS
+1 - SSR / TSS
+@
+
+The standard error of the regression (SER) is computed as
+\begin{eqnarray}
+SER &=& s_{\hat{u}}\\
+s^2_{\hat{u}} &=& \frac{1}{n-2} \sum_{i=1}^n (\hat{u}_i)^2 = \frac{SSR}{n-2}
+\end{eqnarray}
+<<>>=
+n <- nrow(CAT.ret)
+SER <- sqrt(SSR / (n - 2))
+SER
+@
+
+
+Plot the residuals of the model.
+<<>>=
+plot(resid(model.fit), type="h")
+@
+
+
+Use the \verb"predict" method to calculate the confidence and prediction intervals of the fitted model.
+<<>>=
+new <- data.frame(market=seq(from=-0.2, to=0.2, length.out=nrow(ret.data)))
+model.ci <- predict(object=model.fit, newdata=new, interval="confidence")
+model.pi <- predict(object=model.fit, newdata=new, interval="prediction")
+@
+
+Access the betas and corresponding standard errors of the model.
+<<>>=
+# Get the betas and the standard errors
+alpha <- round(model.coef[1, 1], 6)
+alpha.se <- round(model.coef[1, 2], 6)
+beta <- round(model.coef[2, 1], 6)
+beta.se <- round(model.coef[2, 2], 6)
+@
+
+Plot the fitted model with the confidence interval.
+<<tidy=FALSE>>=
+plot(coredata(MKT.ret), coredata(CAT.ret),
+     col=rgb(0,0,100,50,maxColorValue=255), pch=20,
+     xlab="Market returns", ylab="CAT returns", xlim=c(-0.2, 0.2),
+     main="lm(CAT ~ Market)")
+abline(model.fit, col="black")
+lines(x=model.ci[, "fit"], y=model.ci[, "upr"], col="blue", lty=1)
+lines(x=model.ci[, "fit"], y=model.ci[, "lwr"], col="blue", lty=1)
+legend("topleft", legend=c(paste("alpha = ", alpha, " (", alpha.se, ")", sep=""),
+                           paste("beta = ", beta, " (", beta.se, ")", sep=""),
+                           "Fitted Values", "95% Confidence Interval"), 
+       col=c("black", "blue"), lty=c(0, 0, 1, 1), cex=0.8, bty="n")
+@
+
+Plot the fitted model with the and prediction interval.
+<<tidy=FALSE>>=
+plot(coredata(MKT.ret), coredata(CAT.ret),
+     col=rgb(0,0,100,50,maxColorValue=255), pch=20,
+     xlab="Market returns", ylab="CAT returns", xlim=c(-0.2, 0.2),
+     main="lm(CAT ~ Market)")
+abline(model.fit, col="black")
+lines(x=model.pi[, "fit"], y=model.pi[, "upr"], col="red", lty=2)
+lines(x=model.pi[, "fit"], y=model.pi[, "lwr"], col="red", lty=2)
+legend("topleft", legend=c(paste("alpha = ", alpha, " (", alpha.se, ")", sep=""),
+                           paste("beta = ", beta, " (", beta.se, ")", sep=""),
+                           "Fitted Values", "95% Prediction Interval"), 
+       col=c("black", "red"), lty=c(0, 0, 1, 2), cex=0.8, bty="n")
+@
+
+\subsection{Regression with multiple regressors}
+The Fama French 3 Factor model is used to demonstrate regression with multiple regressors. The first example will use AAPL weekly returns and the Fama French factors from 2005-01-14 to 2013-10-25. The premise of the model is that AAPL returns can be explained by the 3 factors of the Fama French model.
+
+<<>>=
+data(fama_french_factors)
+
+# The first 3 columns are the factors, the 4th column is the risk free rate.
+ff_factors <- fama_french_factors[, 1:3]
+head(ff_factors, 5)
+@
+
+Mkt-RF is the market excess return.
+SMB is \textbf{S}mall \textbf{M}inus \textbf{B}ig in terms of market capitalization.
+HML is \textbf{H}igh \textbf{M}inus \textbf{L}ow in terms of book-to-market.
+
+<<>>=
+data(returns)
+# Align the dates of the Fama-French Factors and the returns
+returns <- returns['/2013-10-25']
+AAPL.ret <- returns[, "AAPL"]
+
+# AAPL excess returns
+AAPL.e <- AAPL.ret - fama_french_factors[, "RF"] / 100
+@
+
+<<>>=
+# Fit the model
+ff.fit <- lm(AAPL.e ~ ff_factors)
+ff.fit
+summary(ff.fit)
+@
+
+If we wanted to fit the model to more assets, we could manually fit the model with different assets as the response variable. However, we can automatically fit several models very easily with R.
+
+<<>>=
+# Omit the first column of returns because it is the SPY weekly returns, 
+# which is a proxy for the market.
+returns <- returns[, -1]
+
+# Calculate the excess returns of all assets in the returns object
+ret.e <- returns - (fama_french_factors[, "RF"] / 100) %*% rep(1, ncol(returns))
+@
+
+The \verb"ret.e" object contains the excess returns for AAPL, XOM, GOOG, MSFT, and GE.
+<<>>=
+# Show the first 5 rows of ret.e
+head(ret.e, 5)
+@
+
+Here we fit the Fama French 3 Factor model to each asset in \verb"ret.e". This fits 5 models, 1 for each asset, and stores results of each model in the \verb"ff.fit" object as a multiple linear model (mlm) object.
+<<>>=
+ff.fit <- lm(ret.e ~ ff_factors)
+# Display the coefficients of each model
+ff.fit
+@
+
+Extract and plot the beta values and the R squared values for each asset from the Fama French 3 Factor model.
+<<>>=
+beta0 <- coef(ff.fit)[1,]
+beta1 <- coef(ff.fit)[2,]
+beta2 <- coef(ff.fit)[3,]
+beta3 <- coef(ff.fit)[4,]
+rsq <- sapply(X=summary(ff.fit), FUN=function(x) x$r.squared)
+names(rsq) <- colnames(ret.e)
+
+par(mfrow=c(2,2))
+barplot(beta1, main="Beta for Market-RF", col=bluemono, cex.names=0.8)
+barplot(beta2, main="Beta for SMB", col=bluemono, cex.names=0.8)
+barplot(beta3, main="Beta for HML", col=bluemono, cex.names=0.8)
+barplot(rsq, main="R Squared Values", col=bluemono, cex.names=0.8)
+par(mfrow=c(1,1))
+@
+
+Display the summary object for each model
+<<>>=
+summary(ff.fit)
+@
+
+\bibliography{GARPFRM}
+
+\end{document}

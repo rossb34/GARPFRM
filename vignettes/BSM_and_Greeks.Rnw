@@ -1,0 +1,425 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{Black-Scholes-Merton and the Greeks}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+suppressPackageStartupMessages(library(GARPFRM))
+opts_chunk$set(tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{Black-Scholes-Merton and the Greeks}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate the Black-Scholes-Merton pricing formulas and the "Greeks" as outlined in Chapter 4 and Chapter 5 of Valuation and Risk Models.
+\end{abstract}
+
+\tableofcontents
+
+\section{Black-Scholes-Merton Pricing Formulas}
+This section focuses on the application of the Black-Scholes-Merton pricing formulas for European call and put options. For derivation and theoretical background, the reader is encouraged to to study Chapter 4 of Valuation and Risk Models.
+
+The Black-Scholes-Merton pricing formulas for European call and put options are
+\begin{description}
+  \item[Call]
+  \begin{equation*}
+  c = S_0 N(d_1) - K e^{-rT} N(d_2)
+  \end{equation*}
+  \item[Put]
+  \begin{equation*}
+  p = K e^{-rT} N(-d_2) - S_0 N(-d_1)
+  \end{equation*}
+\end{description}
+
+where
+\begin{eqnarray*}
+  d_1 = \frac{\ln (S_0 / K) + (r + \sigma^2 / 2) T}{\sigma \sqrt{T}}\\
+  d_2 = \frac{\ln (S_0 / K) + (r - \sigma^2 / 2) T}{\sigma \sqrt{T}} = d_1 - \sigma \sqrt{T}\\
+  S_0 \quad \text{is the underlying stock price at $t = 0$}\\
+  K \quad \text{is the strike price}\\
+  r \quad \text{is the risk free rate}\\
+  T \quad \text{is the time to maturity in years}\\
+  \sigma \quad \text{is the volatility of the stock}\\
+  N(.) \quad \text{is the cumulative distribution function for a standard normal distribution}
+\end{eqnarray*}
+
+\subsection{Properties}
+For a call option, as the underlying price, $S_0$, becomes very large, the option will almost surely be exercised. The price of the call then becomes
+
+\begin{equation*}
+S_0 - K e^{-r T}
+\end{equation*}
+
+<<tidy=FALSE>>=
+# Demonstrate the property of the Black-Scholes-Merton formula for a call 
+# option as the underlying price becomes very large
+S0 <- seq(100, 100000, 100)
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = S0,
+                      K = 100,
+                      maturity = 1, 
+                      r = 0.1, 
+                      volatility = 0.2)
+call.price <- optionValue(option = eu.call, method = "Black-Scholes")
+plot(S0, call.price, xlab="Underlying Price", ylab="Call Price",
+     main="Call price as S_0 becomes very large", type="l")
+@
+
+<<tidy=FALSE>>=
+# Demonstrate the property of the Black-Scholes-Merton formula for a call 
+# option as the volatility approaches 0
+sigma <- seq(0.2, 0, -0.01)
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = 100,
+                      K = 100,
+                      maturity = 1, 
+                      r = 0.1, 
+                      volatility = sigma)
+call <- optionValue(option = eu.call, method = "Black-Scholes")
+# S_0 - K * e^{-r T}
+100 - 100 * exp(-0.1 * 1)
+plot(sigma, call, ylab="Call Price", xlab="Volatility", 
+     main="Call price as volatility approaches 0", type = "l")
+@
+
+
+Example 4.6: The stock price 6 months for the expiration of an option is \$42, the exercise price of the option is \$40, the risk-free interest rate is 10\% per annum, and the volatility is 20\% per annum.
+<<tidy=FALSE>>=
+# The stock price 6 months for the expiration of an option is $42, 
+# the exercise price of the option is $40, the risk-free interest 
+# rate is 10% per annum, and the volatility is 20% per annum.
+
+# Price the European call option
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = 42, 
+                      K = 40,
+                      maturity = 0.5, 
+                      r = 0.1, 
+                      volatility = 0.2)
+call <- optionValue(option = eu.call, method = "Black-Scholes")
+call
+
+# Price the European put option
+eu.put <- eu.call
+eu.put$type <- "put"
+put <- optionValue(option = eu.put, method = "Black-Scholes")
+put
+@
+
+\section{Implied Volatilities}
+The volatility the stock price is not directly observable and must be implied by option prices in the market. Here we calculate the implied volatility of a European call option with a price of \$1.875 and $S_0 = 21$, $K = 20$, $r = 0.1$, and $T = 0.25$. 
+<<tidy=FALSE>>=
+# Compute the implied volatility of a European call option with a 
+# price of $1.875 and S_0 = 21, K = 20, r = 0.1, and T = 0.25
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = 21, 
+                      K = 20,
+                      maturity = 0.25, 
+                      r = 0.1)
+impliedVolatility(eu.call, 1.875)
+@
+
+\section{Dividends}
+Example 4.9: Consider a European call option on a stock when there are ex-dividend dates in two months and five months. The dividend on each ex-dividend date is expected to be \$0.50. The current share price is \$40, the exercise price is \$40, and the stock price volatility is 30\% per annum, the risk-free rate of interest is 9\% per annum, and the time to maturity is 6 months. 
+Here we compute the value of a European call option with known dividends. 
+<<tidy=FALSE>>=
+# Consider a European call option on a stock when there are 
+# ex-dividend dates in two months and five months. The dividend 
+# on each ex-dividend date is expected to be \$0.50. The current 
+# share price is \$40, the exercise price is \$40, and the stock 
+# price volatility is 30\% per annum, the risk-free rate of 
+# interest is 9\% per annum, and the time to maturity is 6 months.
+
+# Subtract the present value of the dividends from the underlying price
+S0 <- 40 - (0.5 * exp(-0.09 * 2 / 12) + 0.5 * exp(-0.09 * 5 / 12))
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = S0, 
+                      K = 40,
+                      maturity = 0.5, 
+                      r = 0.09,
+                      volatility = 0.3)
+optionValue(eu.call, "Black-Scholes")
+@
+
+
+\section{The Greek Letters}
+This section introduces what is referred to as the "Greeks" for European options using the Black-Scholes-Merton formulas. The Greeks measure risk in a position in an option or portfolio of options.
+
+Here we create option specifications for call and put options that will be used in the following sections.
+<<tidy=FALSE>>=
+# Specify European call and put options where the current stock price is
+# $49, the strike price is $50, the risk-free rate is 5%, the time to
+# maturity is 20 weeks, and the volatility is 20%.
+
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = 49, 
+                      K = 50,
+                      maturity = 20/52, 
+                      r = 0.05,
+                      volatility = 0.2)
+
+eu.put <- optionSpec(style = "european", 
+                      type = "put", 
+                      S0 = 49, 
+                      K = 50,
+                      maturity = 20/52, 
+                      r = 0.05,
+                     volatility = 0.2)
+@
+
+
+\subsection{Delta}
+The delta ($\Delta$) of an option is defined as the rate of change of the option price with respect to the price of te underlying asset.
+
+The delta of a European option is given as
+\begin{eqnarray*}
+\Delta (call) = N(d_1)\\
+\Delta (put) = N(d_1) - 1\\
+\end{eqnarray*}
+
+<<>>=
+# Compute the delta of the European call option
+computeGreeks(eu.call, "delta")
+@
+
+
+<<tidy=FALSE>>=
+# Delta as the underlying price varies
+computeGreeks(eu.call, "delta", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Delta of call")
+computeGreeks(eu.put, "delta", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Delta of put")
+@
+
+<<tidy=FALSE>>=
+# Delta as the time to maturity varies for in the money, at the money, and
+# out of the money call options
+maturity <- seq(0.01, 1, 0.05)
+plot(maturity, xlim = range(maturity), ylim = c(0,1), 
+     type="n", xlab="Time to expiration", ylab="Delta")
+lines(x = maturity, y = deltaBS(52, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=2, col="blue")
+lines(x = maturity, y = deltaBS(50, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=1, col="black")
+lines(x = maturity, y = deltaBS(48, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=3, col="red")
+title("Delta of call")
+legend("topright", legend=c("In the money", "At the money", "Out of the money"),
+       lty=c(2,1,3), col=c("blue", "black", "red"), bty="n", cex=0.8)
+@
+
+The delta of a portfolio of options is simply the sum of the delta's of the individual options.
+
+\begin{equation*}
+\Delta_P = \sum_{i=1}^n w_i \Delta_i
+\end{equation*}
+
+Suppose a financial instituion has the following three positions in options on a stock.
+\begin{enumerate}
+  \item A long position in 100,000 call options with the strike price of \$55 and an expiration date in 3 months. The delta of each option is 0.533.
+  \item A short position in 200,000 call options with stick price of \$56 and an expiration date in 2 months. The delta of each option is 0.468.
+  \item A short position in 50,000 options with strike price of \$56 and an expiration date in 2 months. The delta of each option is -0.508.
+\end{enumerate}
+
+The delta of the portfolio is
+<<>>=
+100000 * 0.533 - 200000 * 0.468 - 50000 * -0.508
+@
+
+This means that the portfolio can be made delta neutral by purchasing 14,900 shares of the underlying stock.
+
+
+\subsection{Theta}
+The theta ($\Theta$) of an option is defined as the rate of change of the value of the option with respect to the passage of time with all else remaining equal.
+
+The theta of a European option is given as
+\begin{eqnarray*}
+\Theta (call) = - \frac{S_0 N'(d_1) \sigma}{2 \sqrt{T}} - r K e^{-r T} N(d_2)\\
+\Theta (put) = \frac{S_0 N'(d_1) \sigma}{2 \sqrt{T}} + r K e^{-r T} N(-d_2)\\
+\end{eqnarray*}
+
+where $N'(.)$ is the probability density function for a standard normal distribution.
+
+<<>>=
+# Compute the theta of the European call option
+computeGreeks(eu.call, "theta")
+@
+
+<<tidy=FALSE>>=
+# Theta as the underlying price varies
+computeGreeks(eu.call, "theta", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Theta of call")
+@
+
+<<tidy=FALSE>>=
+# Theta as the time to maturity varies for in the money, at the money, and
+# out of the money call options
+maturity <- seq(0.01, 1, 0.05)
+plot(maturity, xlim = range(maturity), ylim = c(-15,0), 
+     type="n", xlab="Time to expiration", ylab="Theta")
+lines(x = maturity, y = thetaBS(55, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=2, col="blue")
+lines(x = maturity, y = thetaBS(50, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=1, col="black")
+lines(x = maturity, y = thetaBS(45, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=3, col="red")
+title("Theta of call")
+legend("topright", legend=c("In the money", "At the money", "Out of the money"),
+       lty=c(2,1,3), col=c("blue", "black", "red"), bty="n", cex=0.8)
+@
+
+\subsection{Gamma}
+The gamma ($\Gamma$) of an option is defined as the rate of change of the delta of the option with respect to the price of the underlying asset.
+
+The gamma of a European option is given as
+\begin{equation*}
+\Gamma = \frac{N'(d_1)}{S_0 \sigma \sqrt{T}}
+\end{equation*}
+
+Note that the gamma for a European put option is equal to the gamma of a European call option.
+
+<<>>=
+# Compute the gamma of the European call option
+computeGreeks(eu.call, "gamma")
+@
+
+<<tidy=FALSE>>=
+# Gamma as the underlying price varies
+computeGreeks(eu.call, "gamma", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Gamma of call")
+@
+
+<<tidy=FALSE>>=
+# Gamma as the time to maturity varies for in the money, at the money, and
+# out of the money call options
+maturity <- seq(0.01, 1, 0.05)
+plot(maturity, xlim = range(maturity), ylim = c(0,0.5), 
+     type="n", xlab="Time to expiration", ylab="Gamma")
+lines(x = maturity, y = gammaBS(55, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=2, col="blue")
+lines(x = maturity, y = gammaBS(50, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=1, col="black")
+lines(x = maturity, y = gammaBS(45, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=3, col="red")
+title("Gamma of call")
+legend("topright", legend=c("In the money", "At the money", "Out of the money"),
+       lty=c(2,1,3), col=c("blue", "black", "red"), bty="n", cex=0.8)
+@
+
+\subsection{Vega}
+The vega ($\nu$) of an option is defined as the rate of change of the value of the option with respect to the volatility of the underlying asset.
+
+The vega of a European option is given as
+\begin{equation*}
+\nu = S_0 \sqrt{T} N'(d_1)
+\end{equation*}
+
+Note that the vega for a European put option is equal to the vega of a European call option.
+
+<<>>=
+# Compute the vega of a European call option
+computeGreeks(eu.call, "vega")
+@
+
+<<tidy=FALSE>>=
+# Vega as the underlying price varies
+computeGreeks(eu.call, "vega", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Vega of call")
+@
+
+<<tidy=FALSE>>=
+# Vega as the time to maturity varies for in the money, at the money, and
+# out of the money call options
+maturity <- seq(0.01, 1, 0.05)
+plot(maturity, xlim = range(maturity), ylim = c(0,20), 
+     type="n", xlab="Time to expiration", ylab="Theta")
+lines(x = maturity, y = vegaBS(55, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=2, col="blue")
+lines(x = maturity, y = vegaBS(50, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=1, col="black")
+lines(x = maturity, y = vegaBS(45, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=3, col="red")
+title("Vega of call")
+legend("topleft", legend=c("In the money", "At the money", "Out of the money"),
+       lty=c(2,1,3), col=c("blue", "black", "red"), bty="n", cex=0.8)
+@
+
+\subsection{Rho}
+The rho ($\rho$) of an option is defined as the rate of change of the value of the option with respect to the risk-free interest rate.
+
+The rho of a European option is given as
+\begin{eqnarray*}
+\rho (call) = K T e^{-r T} N(d_2)\\
+\rho (put) = -K T e^{-r T} N(-d_2)\\
+\end{eqnarray*}
+
+
+<<>>=
+# Compute the rho of the European call option
+computeGreeks(eu.call, "rho")
+@
+
+<<tidy=FALSE>>=
+# Rho as the unerlying price varies
+computeGreeks(eu.call, "rho", prices = seq(20, 80, 1), 
+              plot = TRUE, main="Rho of call")
+@
+
+<<tidy=FALSE>>=
+# Rho as the time to maturity varies for in the money, at the money, and
+# out of the money call options
+maturity <- seq(0.01, 1, 0.05)
+plot(maturity, xlim = range(maturity), ylim = c(0,40), 
+     type="n", xlab="Time to expiration", ylab="Theta")
+lines(x = maturity, y = rhoBS(55, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=2, col="blue")
+lines(x = maturity, y = rhoBS(50, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=1, col="black")
+lines(x = maturity, y = rhoBS(45, 50, 0.05, 0, 0.2, maturity, "call"), 
+      lty=3, col="red")
+title("Rho of call")
+legend("topleft", legend=c("In the money", "At the money", "Out of the money"),
+       lty=c(2,1,3), col=c("blue", "black", "red"), bty="n", cex=0.8)
+@
+
+\subsection{Portfolio Insurance}
+Example 5.9: A portfolio with worth \$90 million. To protect against market downturns the managers of the portfolio require a 6-month European put option on the portfolio with a strike price of \$87 million. The risk-free rate is 9\% per annum, the dividend yield is 3\% per annum, and the volatility of the portfolio is 20\% per annum. The S\&P 500 index stands at 900. As the portfolio is considered to mimic the S\&P 500 fairly closely, one alternative is to buy 1000 put options on the S\&P 500 with a strike price of 870. Another option is to create the option synthetically. In this case, $S_0 = 90$ million, $K = 87$ million, $r = 0.09$, $q = 0.03$, $\sigma = 0.25$, and $T = 0.5$.
+
+<<tidy=FALSE>>=
+eu.put <- optionSpec(style = "european", 
+                     type = "put", 
+                     S0 = 90, 
+                     K = 87,
+                     maturity = 0.5, 
+                     r = 0.09,
+                     volatility = 0.25,
+                     q = 0.03)
+computeGreeks(eu.put, "delta")
+@
+
+The delta of the synthetic option is -0.3215. This means that 32.15\% of the portfolio should be sold to match the delta of the synthetic option.
+
+\bibliography{GARPFRM}
+
+\end{document}

@@ -1,0 +1,208 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{Binomial Trees}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+suppressPackageStartupMessages(library(GARPFRM))
+opts_chunk$set(tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{Binomial Trees}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate valuing an option by constructing a binomial tree as outlined in Chapter 3 of Valuation and Risk Models.
+\end{abstract}
+
+\tableofcontents
+
+\section{One-Step Binomial Tree}
+\subsection{No-Arbitrage Argument}
+We start with a simple example to introduce the concept of a one-step binomial tree to value a European call option with a strike price of \$21 and time to maturity of 3 months. Suppose that the current price of a stock is \$20 and we know with certainty that the price will be either \$18 or \$22 in three months. In three months, there are two possible outcomes and the option has two possible values. If the price is \$22, the value of the option will be \$1. If the price is \$18, the value of the option will be \$0.
+
+INSERT IMAGE OF 1-STEP TREE
+
+To value the option, we form a riskless portfolio consisting of the stock and the option. In the absence of arbitrage opportunities, it is possible to form a portfolio such that there is no uncertainty about the value of the portfolio at the end of the 3 months. We form a portfolio such that we short the call option and buy $\Delta$ shares of the underlying stock. Here we calculate the value of the portfolio for the two possible outcomes at the end of the 3 months.
+
+\begin{description}
+  \item[The stock price is \$22]
+  The value of the portfolio is \$22 $\Delta$ - 1 
+  
+  \item[The stock price is \$18]
+  The value of the portfolio is \$18 $\Delta$
+\end{description}
+
+Now we solve for $\Delta$ to determine the number of shares of the underlying stock we need to purchase for our portfolio.
+
+\begin{eqnarray*}
+22 \Delta - 1 &=& 18 \Delta\\
+\Delta &=& 0.25
+\end{eqnarray*}
+
+Therefore, our riskless portfolio is long $\Delta = 0.25$ shares of stock and short 1 call option. At the end of 3 months, the value of our portfolio is $22 * 0.25 - 1 = 18 * 0.25 = 4.5$. This confirms that our portfolio value is the same if the stock price increases to \$22 or decreases to \$18. One way to interpret $\Delta$ is the number of shares of the underlying stock to purchase to hedge our short position in the call option. We make the argument that in the abscence of arbitrage, the riskless portfolio must earn the risk free rate. Let the current risk free rate be 12\% per annum. The current value of the portfolio is the present value of 4.5
+
+\begin{equation*}
+4.5 e^{-0.12 * 3 / 12} = 4.367
+\end{equation*}
+
+Here we calculate the value of our portfolio today. Let $f$ denote the price of the option.
+
+\begin{eqnarray*}
+20 \Delta - f &=& 4.367\\
+20 * 0.25 - f &=& 4.367\\
+\end{eqnarray*}
+
+Now we solve for $f$ to determine the value of the option.
+\begin{eqnarray*}
+f &=& 20 * 0.25 - 4.367\\
+f &=& 0.633
+\end{eqnarray*}
+
+
+The above approach generalizes to the following equations:
+\begin{eqnarray*}
+p &=& \frac{e^{rT} - d}{u - d}\\
+f &=& e^{-r T} (p * f_u + (1 - p) * f_d)\\
+\end{eqnarray*}
+
+where
+\begin{description}
+  \item[$p$] is the probability of an up movement in the stock price
+  \item[$r$] is the risk free rate per annum
+  \item[$T$] is the time to maturity in years
+  \item[$u$] is defined such that the $u-1$ is the percentage increase in the stock price when there is an up movement
+  \item[$d$] is defined such that $1-d$ is the percentage decrease in the stock price when there is a down movement
+  \item[$f$] is the value of the option
+  \item[$f_u$] is the option value if the stock price moves up
+  \item[$f_d$] is the the option value if the stock moves down
+\end{description}
+
+\subsection{Risk-Neutral Valuation}
+We can also value the option in a risk-neutral framework. Refer to the FRM text for a detailed description of risk-neutral valuation. Here we interpret $p$ as the probability of an up movement and $1 - p$ as the probability of a down movement in a risk neutral world. We can make the argument that, in a risk neutral world, the expected return of a stock must be equal to the risk free rate.
+
+The expected value of a stock at time $t$ is given by
+\begin{eqnarray*}
+E[S_t] = p * S_0 * u + (1 - p) * S_0 * d
+\end{eqnarray*}
+
+where $S_0$ is the price of the stock at time $t=0$.
+
+Substiuting $p = (e^{rT} - d) / (u - d)$ gives
+\begin{eqnarray*}
+E[S_t] = S_0 *e^{rT}
+\end{eqnarray*}
+
+Therefore $p$ must satisfy
+\begin{eqnarray*}
+22 * p + 18 * (1 - p) &=& 20 * e^{0.12 * 3 / 12}\\
+p &=& 0.6532
+\end{eqnarray*}
+
+This means that at the end of the 3 months the value of the call option is \$1 with probability 0.6532 or value of \$0 with probability 0.3468. The expected value of the option is
+\begin{equation*}
+1 * 0.6532 + 0 * (1 - 0.6532) = 0.6532
+\end{equation*}
+
+We discount at the risk free rate in a risk-neutral world, therefore the value of the option today is
+\begin{equation*}
+0.6532 * e^{0.12 * 3 / 12} = 0.633
+\end{equation*}
+
+We have shown that valuing the option in the risk neutral world gives the same answer as valuing the option with no arbitrage arguments.
+
+\section{Two-Step and N-Step Binomial Trees}
+The approach of the one-step binomial tree can applied to a two-step binomial tree and extended further to a binomial tree with $N$ steps. When using a binomial tree to value an option, the goal is to compute the option value at the initial node where time $t = 0$. For a binomial tree, we recursively move backwards through the tree, computing the stock price and option value at each node  until we reach the initial node.
+
+INSERT IMAGE OF TWO-STEP TREE
+
+INSERT IMAGE OF N-STEP TREE
+
+\section{American Options}
+When valuing American style options, we must consider early exercise. To account for early exercise, we recursively work backwards through the tree as in the previously example. The difference is that when computing the option value at each node, we must compare option payoff from early exercise to the expected value of the option. At each node, the value of the option is the greater of
+
+\begin{enumerate}
+  \item Option Expected Value
+  \begin{equation*}
+  e^{-r \Delta t} ( p * f_u + (1 - p) f_d)
+  \end{equation*}
+  \item
+  Option Payoff from Early Exercise\newline
+  max($S_t - K$, 0) for a call option or max($K - S_t$, 0) for a put option.
+\end{enumerate}
+
+<<tidy=FALSE>>=
+am.put <- optionSpec(style = "american", 
+                      type = "put", 
+                      S0 = 50, 
+                      K = 52, 
+                      maturity = 2, 
+                      r = 0.05, 
+                      volatility = 0.3)
+am.value <- optionValue(am.put, "Binomial", 2, verbose = TRUE)
+@
+
+\section{Formual Summary}
+Here we summarize formulas to construct the binomial tree
+
+Calibrate $u$ and $d$ to the volatility of the stock price:
+\begin{eqnarray*}
+u &=& e^{\sigma \sqrt{\Delta t}}\\
+d &=& e^{-\sigma \sqrt{\Delta t}}\\
+\end{eqnarray*}
+
+The probability of an up movement is given as
+\begin{eqnarray*}
+p = \frac{e^{r \Delta t} - d}{u - d}
+\end{eqnarray*}
+
+where
+\begin{description}
+  \item[$r$] is the risk free rate
+  \item[$\Delta t$] is the time step
+\end{description}
+
+
+\section{Examples}
+<<tidy=FALSE>>=
+eu.call <- optionSpec(style = "european", 
+                      type = "call", 
+                      S0 = 810, 
+                      K = 800, 
+                      maturity = 0.5, 
+                      r = 0.05, 
+                      volatility = 0.2,
+                      q = 0.02)
+eu.value <- optionValue(eu.call, "Binomial", 2, verbose = TRUE)
+@
+
+
+<<tidy=FALSE>>=
+am.call <- optionSpec(style = "american", 
+                      type = "call", 
+                      S0 = 0.61, 
+                      K = 0.6, 
+                      maturity = 3/12, 
+                      r = 0.05, 
+                      volatility = 0.12,
+                      q = 0.07)
+am.value <- optionValue(am.call, "Binomial", 3, verbose = TRUE)
+@
+
+\bibliography{GARPFRM}
+
+\end{document}

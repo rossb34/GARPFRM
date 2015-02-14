@@ -1,0 +1,16 @@
+backtest_VaR     demonstrate backtesting a Value at Risk model
+bootstrap     demonstrate applying the bootstrap method to various statistics
+DataAccess    demonstrate methods of accessing financial data
+DelineatingEfficientPortfolios    R code from Delineating Efficient Portfolios vignette
+demo_CAPM     demonstrate Capital Asset Pricing Model
+demo_EWMA_GARCH11     demonstrate fitting EWMA and GARCH models
+EWMA     demonstrate fitting an EWMA model to estimate volatility, covariance, and correlation for univariate and multivariate time series of returns
+EstimatingVolatilitiesCorrelation     R code from vignette on estimating volatilities and correlations
+Fixed     demonstrate functions fixed income analysis
+monte_carlo     demonstrate running a Monte Carlo simulation to simulate asset price paths
+MonteCarloMethods   R code from vignette on Monte Carlo methods
+PerformanceMeasures     R code from Performance Measures vignette
+QuantifyingVolatilityVaRModels    R code from Quantifying Volatility and VaR models vignette
+QuantitativeAnalysisBasics    R code from Quantitative Analysis Basics vignette
+RiskMetricsAndHedges    R code from Risk Metrics and Hedges vignette
+univariate_GARCH     demonstrate fitting a GARCH model to estimate and forecast volatility for a univariate time series of returns

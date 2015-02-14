@@ -1,0 +1,80 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage{hyperref}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{GARPFRM Interactive Web Applications}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+opts_chunk$set(cache=TRUE, tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{GARPFRM Interactive Web Applications}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+This vignette is a summary of the web applications that accompany the \verb"GARPFRM" package \citep{GARPFRM}. The web applications are developed using the \verb"shiny" package \citep{shiny} provided by \href{http://shiny.rstudio.com}{Rstudio}. The applications are currently hosted on the shiny beta hosting server hosted by Rstudio. The applications include data sets for demonstration purposes and also allow the user to upload his or her own data sets.
+\end{abstract}
+
+\tableofcontents
+
+\section{CAPM}
+Application to fit the Capital Asset Pricing Model (CAPM) to asset returns. The application is available at \url{http://spark.rstudio.com/rossbennett3/CAPM/}.
+
+
+\section{Two Asset Frontier}
+Application to compute the efficient frotier of a portfolio of two assets. The application is available at \url{http://spark.rstudio.com/rossbennett3/TwoAssetFrontier/}.
+
+
+\section{Mean Standard Deviation Efficient Frontier}
+Application to compute the efficient frontier of a portfolio of several assets. The application is available at \url{http://spark.rstudio.com/rossbennett3/meanSdEfficientFrontier/}.
+
+
+\section{Performance Measures}
+Application to compute several performance measures of asset returns. The application is available at \url{http://spark.rstudio.com/rossbennett3/PerformanceMeasures/}.
+
+
+\section{Monte Carlo}
+Application to generate asset price paths via a monte carlo simulation assuming the process follows geometric brownian motion. The application is available at \url{http://spark.rstudio.com/rossbennett3/MonteCarlo/}.
+
+
+\section{EWMA Model}
+Application to fit a univariate or multivariate EWMA model to estimate volatility, correlation, and covariance of asset returns. The application is available at \url{http://spark.rstudio.com/rossbennett3/EWMA/}.
+
+
+\section{GARCH Model}
+Application to fit a univariate GARCH model to estimate and forecast volatility of asset returns. Currently, this application can only be accessed from the R prompt as shown below$^*$.
+<<eval=FALSE>>=
+# Uncomment if you do not have shiny installed
+# install.packages("shiny")
+shiny::runGitHub( "UnivariateGARCH", "rossb34")
+@
+
+
+\section{Value-at-Risk Backtesting}
+Application to backtest a Value-at-Risk (VaR) model. The methods to estimate VaR include historical, gaussian, modified, and a GARCH$^*$ model. The application is available at \url{http://spark.rstudio.com/rossbennett3/BacktestVaR/}. The version with the GARCH model for VaR estimates can be accessed from the R prompt as shown below.
+<<eval=FALSE>>=
+# Uncomment if you do not have shiny installed
+# install.packages("shiny")
+shiny::runGitHub( "BacktestVaR", "rossb34")
+@
+
+$^*$ Application is not currently hosted on the server because the \verb"rugarch" package requires R version 3.0.2 and the server is running R version 2.15.3.
+
+\bibliography{GARPFRM}
+
+\end{document}

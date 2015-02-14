@@ -1,0 +1,728 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\begin_modules
+knitr
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine basic
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+CAPM Fitting and Testing
+\end_layout
+
+\begin_layout Author
+Thomas Fillebeen
+\end_layout
+
+\begin_layout Abstract
+Standard Capital Asset Pricing Model (CAPM) fitting and testing using CRSP
+ data.
+ Where CAPM describes the relationship between risk and expected return.
+\end_layout
+
+\begin_layout Abstract
+CAPM Assumptions 1.
+ Identical investors who are price takers; 2.
+ Investment over the same time horizon; 3.
+ No transaction costs or taxes; 4.
+ Can borrow and lend at risk-free rate; 5.
+ Investors only care about portfolio expected return and variance; 6.
+ Market consists of all publicly traded assets.
+\end_layout
+
+\begin_layout Abstract
+The Consumption-Oriented CAPM (CCAPM) is analogous to the simple form of
+ the CAPM.
+ Except that the growth rate of per capita consumption has replaced the
+ rate of return on the market porfolio as the influence effecting returns.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset toc
+LatexCommand tableofcontents
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Fitting CAPM
+\end_layout
+
+\begin_layout Subsection
+Selected Returns Time Series
+\end_layout
+
+\begin_layout Standard
+Load the GARPFRM package and CRSP dataset for CAPM analysis and then plot
+ first four stocks.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+suppressMessages(library(GARPFRM)) 
+\end_layout
+
+\begin_layout Plain Layout
+
+options(digits=3) 
+\end_layout
+
+\begin_layout Plain Layout
+
+data(crsp.short)
+\end_layout
+
+\begin_layout Plain Layout
+
+stock.df <- largecap.ts[, 1:20] 
+\end_layout
+
+\begin_layout Plain Layout
+
+mrkt <- largecap.ts[, "market"] 
+\end_layout
+
+\begin_layout Plain Layout
+
+rfr <- largecap.ts[, "t90"]
+\end_layout
+
+\begin_layout Plain Layout
+
+plot.zoo(stock.df[,1:4], main="First Four Large Cap Returns")
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In order to get a quick look at the structure of the data inputted into
+ the CAPM model summarize the start and end dates corresponding to the first
+ 4 large cap returns.
+ 
+\end_layout
+
+\begin_layout Standard
+1) illustrate the type of data being analzyed: start-end dates.
+ 
+\end_layout
+
+\begin_layout Standard
+2) then count the number of rows: sample size.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+start(stock.df[,1:4])
+\end_layout
+
+\begin_layout Plain Layout
+
+end(stock.df[,1:4])
+\end_layout
+
+\begin_layout Plain Layout
+
+nrow(stock.df)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Estimate Excess Returns
+\end_layout
+
+\begin_layout Standard
+Estimate excess returns: subtracting off risk-free rate.
+ The risk-free rate of return used for determining the risk premium is usually
+ the historical arithmetic average risk free rates, as opposed to the current
+ risk free rate.
+ Note that excess returns initialized before utilizing in CAPM.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+exReturns <- Return.excess(stock.df, rfr) 
+\end_layout
+
+\begin_layout Plain Layout
+
+colnames(exReturns)= c(colnames(stock.df))
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Fitting CAPM Model: Univariate
+\end_layout
+
+\begin_layout Standard
+The CAPM formula: for individual security apply the security market line
+ (SML) and its relation to expected return and sytematic risk (
+\begin_inset Formula $\beta$
+\end_inset
+
+) in order to illustrate how the market prices individual secruities in
+ relation to their security risk asset class.
+ Run test for the following CAPM estimate: 
+\begin_inset Formula 
+\begin{equation}
+R_{i,t}-R_{f}=\alpha_{i}+\beta_{i}(R_{M,t}-R_{f})+\epsilon_{i,t}
+\end{equation}
+
+\end_inset
+
+where: 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $R_{i,t}$
+\end_inset
+
+ is the return on the capital asset 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $R_{f}$
+\end_inset
+
+ is the risk-free rate of interest (e.g.
+ government treasuries) 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\alpha_{i}$
+\end_inset
+
+ is the intercept of the security characteristics line 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\beta{}_{i}$
+\end_inset
+
+ is the sensitivity of the excess asset returns to the excess market returns
+ 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $R_{M,t}$
+\end_inset
+
+ is the return of the market 
+\end_layout
+
+\begin_layout Description
+\begin_inset Formula $\epsilon{}_{i,t}$
+\end_inset
+
+ is the error term of the regression 
+\end_layout
+
+\begin_layout Standard
+What is being tested with the getStatistics method is: 
+\begin_inset Formula 
+\begin{equation}
+H_{0}:\alpha=0;H_{1}:\alpha\neq0
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+H_{0}:\beta=1;H_{1}:\beta\neq1
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+That is, run CAPM regression for AMAT and estimate CAPM with 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ = 0 & 
+\begin_inset Formula $\beta$
+\end_inset
+
+ = 1 for asset.
+ The getStatistics method will reflect these alternative hypothesis tests.
+ Finally, when plotting the asset the legend shows the coefficient values
+ and their standard errors.
+\end_layout
+
+\begin_layout Standard
+1) first estimate the univariate CAPM
+\end_layout
+
+\begin_layout Standard
+2) then plot data with regression line
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+uv <- CAPM(exReturns[,1], mrkt) 
+\end_layout
+
+\begin_layout Plain Layout
+
+getStatistics(uv)
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(uv)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+CAPM Model: Multiple Asset Analysis
+\end_layout
+
+\begin_layout Standard
+The CAPM function can handle multiple assets at once, and will cycle through
+ each asset one at a time and output the results.
+ When plotting the asset the legend shows the coefficient values and their
+ standard error.
+ Run CAPM regression:
+\end_layout
+
+\begin_layout Standard
+1) estimate MLM CAPM for AMAT, AMGN, and CAT
+\end_layout
+
+\begin_layout Standard
+2) then plot data with regression line
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+mlm <- CAPM(exReturns[,1:3], mrkt) 
+\end_layout
+
+\begin_layout Plain Layout
+
+getStatistics(mlm)
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(mlm)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Testing CAPM
+\end_layout
+
+\begin_layout Subsection
+Retrieve 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ & 
+\begin_inset Formula $\beta$
+\end_inset
+
+ and Run a Hypothesis Test to Estimate Result Significance
+\end_layout
+
+\begin_layout Standard
+Retrieve 
+\begin_inset Formula $\alpha$
+\end_inset
+
+ & 
+\begin_inset Formula $\beta$
+\end_inset
+
+ from CAPM object for one or multiple assets and run hypothesis test.
+ Then specify a significance level to test using the hypTest method: 
+\begin_inset Formula 
+\begin{equation}
+H_{0}:\alpha=0;H_{1}:\alpha\neq0
+\end{equation}
+
+\end_inset
+
+
+\begin_inset Formula 
+\begin{equation}
+H_{0}:\beta=1;H_{1}:\beta\neq1
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Run a hypothesis test first on uv and then on mlm:
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+getBetas(uv) 
+\end_layout
+
+\begin_layout Plain Layout
+
+getAlphas(uv) 
+\end_layout
+
+\begin_layout Plain Layout
+
+hypTest(uv, significanceLevel=0.05) 
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+getBetas(mlm) 
+\end_layout
+
+\begin_layout Plain Layout
+
+getAlphas(mlm) 
+\end_layout
+
+\begin_layout Plain Layout
+
+hypTest(mlm, significanceLevel=0.05)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Estimate Expected Returns and Plot
+\end_layout
+
+\begin_layout Standard
+Security Market Line (SML) of the CAPM.
+ The SML is a represesentation of the CAPM.
+ It illustrates the expected rate of return of an individual security as
+ a function of systematic, non-diversified risk (known as 
+\begin_inset Formula $\beta$
+\end_inset
+
+ ).
+ 
+\end_layout
+
+\begin_layout Standard
+Plot expected return versus 
+\begin_inset Formula $\beta$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Hence, let us first estimate the mlm CAPM and then chart the SML.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+mlm <- CAPM(exReturns[,], mrkt)
+\end_layout
+
+\begin_layout Plain Layout
+
+chartSML(mlm)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Consumption-Oriented CAPM
+\end_layout
+
+\begin_layout Subsection
+Fitting CCAPM
+\end_layout
+
+\begin_layout Standard
+To illustate the power of the CAPM model test its relationship with explanatory
+ variable consumption.
+ Running consumption alone results in a model that is underspecified.
+ But once savings, and income are added the explanatory power of the model
+ is enhanced but that is beyond the illustrative purpose of this vignette.
+ 
+\end_layout
+
+\begin_layout Standard
+Run CCAPM regression for CONS (Consumption).
+\end_layout
+
+\begin_layout Standard
+1) load FED consumption data: CONS data(consumption)
+\end_layout
+
+\begin_layout Standard
+2) convert to yearmon index and align consumption and market
+\end_layout
+
+\begin_layout Standard
+2) finally, plot data with regression line
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<include=TRUE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+data(consumption)
+\end_layout
+
+\begin_layout Plain Layout
+
+consumption <- xts(consumption, as.yearmon(index(consumption))) 
+\end_layout
+
+\begin_layout Plain Layout
+
+mrkt <- xts(mrkt, as.yearmon(index(mrkt))) 
+\end_layout
+
+\begin_layout Plain Layout
+
+consumption <- consumption[index(mrkt)]
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+
+capm.cons = CAPM(consumption, mrkt) 
+\end_layout
+
+\begin_layout Plain Layout
+
+coef(summary(capm.cons))
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(capm.cons)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+NOTE: Particular problems with C-CAPM is that it suffers from two puzzles:
+ the equity premium puzzle (EPP) and the risk-free rate puzzle (RFRP).
+ EPP implies that investors are extremely risk averse to explain the existence
+ of a market risk premium.
+ While RFRP stipulates that investors save in TBills despite the low rate
+ of return.
+\end_layout
+
+\end_body
+\end_document

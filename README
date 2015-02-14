@@ -1,0 +1,3 @@
+The purpose of this package is to implement the concepts and methods presented in the Global Association of Risk Professionals (GARP) Financial Risk Manager (FRM) Part I series of books. Developing the GARPFRM package is a collaborative project between the University of Washington Computational Finance & Risk Management Program and the Global Association of Risk Professionals to develop R packages that facilitate the learning of risk management concepts.
+
+We will be using roxygen2 to generate documentation files. We are now using roxygen2 v4.0.1.

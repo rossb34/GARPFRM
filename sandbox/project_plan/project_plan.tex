@@ -1,0 +1,123 @@
+
+\documentclass[12pt]{amsart}
+\usepackage{geometry} % see geometry.pdf on how to lay out the page. There's lots.
+\geometry{a4paper} % or letter or a5paper or ... etc
+% \geometry{landscape} % rotated page geometry
+
+% See the ``Article customise'' template for come common customisations
+
+\usepackage{verbatim}
+
+\title{GARPFRM Project Plan}
+\author{Ross Bennett}
+\date{\today} % delete this line to display the current date
+
+%%% BEGIN DOCUMENT
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\section{Overview}
+Phase 1 of the GARPFRM package includes sections from the following two books:
+\begin{itemize}
+\item \textit{Foundations of Risk Management}
+\begin{itemize}
+\item Chapter 3: Delineating Efficient Frontiers
+\item Chapter 4: Standard Capital Asset Pricing Model
+\item Chapter 7: Applying CAPM to Performance Measurement
+\end{itemize}
+\item \textit{Quantitative Analysis}
+\begin{itemize}
+\item Chapters 1-8: Basic probability, statistics, linear models, and hypothesis testing
+\item Chapter 9: Monte Carlo Methods
+\item Chapter 10: Estimating Volatilities and Correlation
+\item Chapter 11: Quantifying Volatility in VaR Models
+\end{itemize}
+\end{itemize}
+
+\section{Delineating Efficient Frontiers}
+This section covers mean variance portfolio optimization to generate and plot efficient frontiers. We can implement a simple version that provides similar functionality to PortfolioAnalytics with basic constraints. The book only focuses on mean-variance, so that is what we will implement. It would be nice to depend on PortfolioAnalytics, but is not advisable because it is not on CRAN. Once PortfolioAnalytics is moved to CRAN, we can revise this section to offer more functionality that is in PortfolioAnalytics.
+
+Leverage Kirk's code and code from PortfolioAnalytics.
+\begin{itemize}
+\item function to create a portfolio object
+\item function to run optimization
+\item function to create the efficient frontier
+\item function to plot the weights along the efficient frontier
+\end{itemize}
+
+Additional features
+\begin{itemize}
+\item Shiny app
+\item demo
+\item vignette
+\end{itemize}
+
+\section{Standard Capital Asset Pricing Model}
+We should have a \verb"CAPM" function that implements basic univariate and multivariate models. Objects created by the \verb"CAPM" function will be assigned a class of \verb"capm_uv" and \verb"capm_mlm" for univariate and multi-linear models, respectively. We also need functionality to do hypothesis testing.
+
+At a minimum, the following functions will be included as "getter" methods for \verb"capm_uv" and \verb"capm_mv" objects:
+\begin{itemize}
+\item \verb"getAlphas"
+\item \verb"getBetas"
+\item \verb"getStatistics"
+\item \verb"plot"
+\item \verb"hypthTest"
+\end{itemize}
+
+Additional features
+\begin{itemize}
+\item Shiny app
+\item demo
+\item vignette
+\end{itemize}
+
+Although robust regression is not covered in the FRM books, we may want to implement this if we have time.
+
+\section{Applying CAPM to Performance Measurement}
+For this section, we will leverage the PerformanceAnalytics package. All functions discussed in this section of the book are already implemented in PerformanceAnalytics. We likely not need to write any functions for this section and should focus on a vignette. The vignette should closely follow the book with an emphasis on using the functions on data sets provided in the package.
+
+Additional features
+\begin{itemize}
+\item Shiny app
+\item demo
+\item vignette
+\end{itemize}
+
+
+\section{Basic probability, statistics, linear models, and hypothesis testing}
+This section covers basic functionality that is already in base R. We likely not need to write any functions for this section and should focus on a vignette. The vignette should closely follow the book with an emphasis on applying the concepts on data sets provided in the package.
+
+\subsection{Exploratory Data Analysis}
+A closely related concept is exploratory data analysis. We should have some basic EDA with good support for visualization using trellis or lattice style plots. The lattice package is pretty complex so we will create some wrapper functions to hide the complexity for the user.
+
+\section{Monte Carlo Methods}
+This section is relatively short and gives a basic overview of Monte Carlo methods. We should have a function that generates data using Monte Carlo methods. The book uses a geometric brownian motion model.
+
+\begin{itemize}
+\item \verb"runMonteCarlo"
+\item \verb"plot" method to show simulated price paths
+\item chart distribution of ending prices
+\end{itemize}
+Best way of implement is 1) create functionality and 2) use Shiny app.
+
+
+\section{Estimating Volatilities and Correlation}
+Estimating volatility using EWMA model and GARCH(1,1) model. Objects created by the \verb"garch11" function and \verb"EWMA" function.
+
+Additional features
+\begin{itemize}
+\item \verb"EWMA"
+\item \verb"garch11"
+\item \verb"fcstGarch11"
+\item Shiny app
+\item demo
+\item vignette
+\end{itemize}
+
+\section{Quantifying Volatility in VaR Models}
+VaR applying historical, and monter carlo approach ex-ante estimation of mean and standard deviation.
+
+
+\end{document}

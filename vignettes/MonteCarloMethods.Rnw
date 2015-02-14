@@ -1,0 +1,279 @@
+\documentclass{article}
+
+\usepackage{amsmath}
+\usepackage{Rd}
+\usepackage{verbatim}
+
+\usepackage[round]{natbib}
+\bibliographystyle{abbrvnat}
+
+%\VignetteIndexEntry{Monte Carlo Methods}
+%\VignetteDepends{GARPFRM}
+%\VignettePackage{GARPFRM}
+
+\begin{document}
+
+<<echo=FALSE>>=
+library(knitr)
+opts_chunk$set(tidy=FALSE, warning=FALSE, fig.width=5, fig.height=5)
+@
+
+
+\title{Monte Carlo Methods}
+\author{Ross Bennett}
+
+\maketitle
+
+\begin{abstract}
+The purpose of this vignette is to demonstrate monte carlo methods as outlined in Chapter 9 of Foundations of Quantitative Analysis.
+\end{abstract}
+
+\tableofcontents
+
+\section{Monte Carlo}
+Monte Carlo methods are simulation techniques uses in valuing derivatives and in measuring risk. The Monte Carlo method we will focus on is the simple case with one random variable. The stochastic model we will use to model the price of an asset is the Geometric Brownian Motion (GBM) model. The model assumes that small changes in price are described by
+
+\begin{equation}
+  dS = \mu S dt + \sigma S dz
+\end{equation}
+
+where
+\begin{description}
+  \item[$\mu$] represents the instantaneous drift rate
+  \item[$\sigma$] represents the instantaneous volatility rate
+  \item[$S$] represents the asset price
+  \item[$dz$] is a normally distributed random variable with mean 0 and variance dt
+\end{description}
+
+In order to simulate the price path followed by $S$, we can discretize the process by dividing the overall time of the asset into $N$ intervals of length $\delta t$ to get
+\begin{equation}
+  d S = S_{t-1} (\mu dt + \sigma \epsilon \sqrt{dt})
+\end{equation}
+
+where $\epsilon$ is a standard normal random variable, $\epsilon \sim N(0,1)$.
+
+The simulated price for $S_1$ is computed as
+\begin{equation}
+  S_1 = S_0 + S_0 (\mu \Delta t + \sigma \epsilon \sqrt{dt})
+\end{equation}
+
+The general equation to simulate the price path for $S$ is
+\begin{equation}
+  S_{t+1} = S_{t-1} + S_{t-1} (\mu \Delta t + \sigma \epsilon \sqrt{\Delta t})
+\end{equation}
+
+We can easy simulate this in \code{R}.
+<<>>=
+suppressPackageStartupMessages(library(GARPFRM))
+# drift rate
+mu <- 0
+
+# volatility rate
+sigma <- 0.1
+
+# starting price
+S0 <- 100
+
+# number of steps
+N <- 100
+
+dt <- 1 / N
+
+# Generate N standard normal random variables
+set.seed(123)
+eps <- rnorm(N)
+
+# Allocate a vector to hold the prices
+S <- vector("numeric", N+1)
+S[1] <- S0
+
+# Precompute some of the terms
+mu_dt <- mu * dt
+sig_dt <- sigma * sqrt(dt)
+
+for(i in 2:length(S)){
+  S[i] <- S[i-1] + S[i-1] * (mu_dt + sig_dt * eps[i-1])
+}
+head(S)
+plot(S, main="Simulated Price Path", type="l")
+@
+
+In practice, simulating $\ln S$ instead of $S$ gives more accuracy. By applying Ito's lemma, the process followed by $\ln S$ is
+\begin{equation}
+  d \ln S = \left( \mu - \frac{\sigma^2}{2} \right) dt + \sigma dz
+\end{equation}
+
+Equivantly we can write this as the discretized version used for simulation purposes.
+\begin{equation}
+  S_{t+1} = S_t exp \left[ \left( \mu - \frac{\sigma^2}{2} \right) \Delta t + \sigma \epsilon \sqrt{\Delta t} \right]
+\end{equation}
+
+Two key assumptions with this model are that $S_T$ is lognormally distributed and the percentage changes of $S$ are normally distributed.
+
+We can easily simulate this in \code{R} using the variables we previously defined.
+<<>>=
+# Allocate a vector to hold the prices
+S1 <- vector("numeric", N+1)
+S1[1] <- S0
+
+# Precompute terms
+mu_sig_dt <- (mu - 0.5 * sigma^2) * dt
+sig_dt <- sigma * sqrt(dt)
+
+for(i in 2:length(S1)){
+  S1[i] <- S1[i-1] * exp(mu_sig_dt + sig_dt * eps[i-1])
+}
+head(S1)
+plot(S1, main="Simulated Price Path", type="l")
+@
+
+The above \code{R} examples simulated only one price path. To carry out the Monte Carlo simulation to value derivatives or manager risk, the process above is carried out $K$ times to simulate $K$ price paths. Here we simulate 10,000 price paths of an asset with a time horizon of 1 year and 52 time steps.
+<<>>=
+mu <- 0.05
+sigma <- 0.15
+N <- 10000
+time <- 1
+steps <- 52
+startingValue <- 100
+
+# Run Monte Carlo simulation and store simulated price paths
+mcSim <- monteCarlo(mu, sigma, N, time, steps, startingValue)
+summary(endingPrices(mcSim))
+@
+
+Plot the simulated price paths and distribution of ending prices.
+<<>>=
+par(mfrow=c(2,1))
+plot(mcSim)
+plotEndingPrices(mcSim)
+par(mfrow=c(1,1))
+@
+
+The Monte Carlo simulation method is useful for valuing options that are path dependent such as lookback or asian options, do not have an analytical solution, or have a complex payoff. Valuing options and variance reduction techniques using Monte Carlo simulation are beyond the scope of this vignette.
+
+\section{Bootstrap}
+An alternative simulation method to generating random numbers from a model with assumptions of the distribution is to sample directly from historical data. Bootstrapping is a statistical method for estimating the sampling distribution of an estimator by sampling with replacement from the original sample. One key assumption is that returns are independent and identically distributed. Note that by random resampling, we break any pattern of time variation in returns. Another drawback is that resampling requires large sample sizes (a small sample size may lead to a poor approximation of the actual distribution) and is relatively computationally intensive.
+
+A major advantage of this approach is that we do not need to make any assumption about the distribution of the data. The bootstrap will capture any departure from the normal distribution or if the data is skewed, has fat tails, or jumps.
+
+We can use the bootstrap method to project prices, returns, or calculate statistics such as standard deviation or Value-at-Risk.
+
+As an example, suppose the ending price of MSFT is \$25 and we want to project the prices 5 periods into the future using the bootstrap method.
+<<>>=
+data(crsp_weekly)
+R.MSFT <- largecap_weekly[, "MSFT"]
+
+# Project number of periods ahead
+nAhead <- 5
+
+# Previous price
+S.p <- 25
+
+# Using a for loop
+bootS <- vector("numeric", nAhead)
+for(i in 1:nAhead){
+  bootS[i] <- S.p * (1 + sample(R.MSFT, 1, TRUE))
+  S.p <- bootS[i]
+}
+bootS
+
+# Vectorized solution
+S.p <- 25
+bootS1 <- S.p * cumprod(1 + sample(coredata(R.MSFT), nAhead, TRUE))
+bootS1
+@
+
+We can also use the bootstrap method to compute various statistics such as Value-at-Risk. Here is an example of how to calculate historical Value-at-Risk with bootstrapped returns.
+<<>>=
+# Number of boostrap replications
+rep <- 10000
+
+# Allocate vector to hold VaR statistic
+out <- vector("numeric", rep)
+for(i in 1:rep){
+  out[i] <- VaR(R.MSFT[sample.int(nrow(R.MSFT), replace=TRUE)], 
+                method="historical")
+}
+
+# Bootstrapped VaR
+mean(out)
+
+# Standard error of Bootstrapped VaR
+sd(out)
+@
+
+The \verb"GARPFRM" package \citep{GARPFRM} provides several functions for bootstrapped statistics as well as a \code{bootFUN} function that will calculate a bootstrapped statistic of any valid \verb"R" function.
+<<>>=
+R <- largecap_weekly[,1:4]
+
+# function to calculate the annualized StdDev using the most recent n periods
+foo <- function(R, n){
+  StdDev.annualized(tail(R, n), geometric=TRUE)
+}
+
+bootFUN(R[,1], FUN="foo", n=104, replications=1000)
+
+# Bootstrap mean estimate.
+bootMean(R)
+
+# Bootstrap standard deviation estimate.
+bootSD(R)
+
+# Bootstrap standard deviation estimate using the StdDev function from
+# PerformanceAnalytics.
+bootStdDev(R)
+
+# Bootstrap simpleVolatility estimate.
+bootSimpleVolatility(R)
+
+# Bootstrap correlation estimate.
+bootCor(R)
+
+# Bootstrap covariance estimate.
+bootCov(R)
+
+# Bootstrap Value-at-Risk (VaR) estimate using the VaR function from
+# PerformanceAnalytics.
+bootVaR(R, p=0.9, method="historical", invert=FALSE)
+bootVaR(R, p=0.9, method="gaussian", invert=FALSE)
+
+# Bootstrap Expected Shortfall (ES) estimate using the ES function from
+# PerformanceAnalytics. Also known as Conditional Value-at-Risk (CVaR) and 
+# Expected Tail Loss (ETL).
+bootES(R, p=0.9, method="historical")
+bootES(R, p=0.9, method="gaussian")
+@
+
+To improve speed and performance, we can run the bootstrap in parallel. We leverage the \verb"foreach" package \citep{foreach} to perform the computations in parallel.
+<<>>=
+# Register multicore parallel backend with 3 cores
+# Note that this example does not work on Windows
+# Windows users should use doSNOW
+# library(doMC)
+# registerDoMC(3)
+
+# Estimate VaR via bootstrap
+# bootVaR(R[,1], p=0.9, method="historical", replications=1000, parallel=TRUE)
+
+
+# Benchmark the performance of running the bootstrap in parallel
+# Bootstrap VaR with parallel=TRUE
+# bootPar <- function(){
+#   bootVaR(R[,1], p=0.9, method="historical", replications=5000, parallel=TRUE)
+# }
+
+# Bootstrap VaR with parallel=FALSE
+# bootSeq <- function(){
+#   bootVaR(R[,1], p=0.9, method="historical", replications=5000, parallel=FALSE)
+# }
+
+# Benchmark these functions
+# library(rbenchmark)
+# benchmark(bootPar(), bootSeq(), replications=1)[,1:4]
+@
+
+
+
+\bibliography{GARPFRM}
+
+\end{document}

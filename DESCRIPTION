@@ -1,0 +1,22 @@
+Package: GARPFRM
+Type: Package
+Title: Global Association of Risk Professionals: Financial Risk Manager
+Version: 0.1.0
+Date: 2013-11-17
+Author: Ross Bennett and Thomas Fillebeen
+Contributor: Mark L. Labovitz, Kirk Li, Doug Martin, Guy Yollin
+Maintainer: Thomas Fillebeen <tdf17@uw.edu>
+Description: R package for Global Association of Risk Professionals: Financial
+    Risk Manager
+Depends:
+    R (>= 2.15.0),
+    xts (>= 0.8),
+    PerformanceAnalytics (>= 1.0.0)
+Suggests:
+    rugarch (>= 1.3.1),
+    PortfolioAnalytics (>= 0.9.0),
+    psych (>= 1.4.4),
+    foreach,
+    iterators
+License: GPL
+BuildVignettes: false

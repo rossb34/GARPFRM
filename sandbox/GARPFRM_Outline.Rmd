@@ -1,0 +1,158 @@
+---
+title: "GARPFRM Package"
+author: "Ross Bennett and Doug Martin"
+date: "February 1, 2015"
+output: pdf_document
+---
+
+## Overview
+The GARPFRM package provides a framework to implement the topics and 
+ideas presented in 'Financial Risk Manager (FRM) Part 1: Quantitative Analysis' 
+(2012) and 'Financial Risk Manager (FRM) Part 1: Foundations of Risk 
+Management' (2012).
+
+<!-- comment -->
+
+## Purpose
+The purpose of the package is to implement the concepts and methods presented 
+in the Global Association of Risk Professionals (GARP) Financial Risk Manager 
+(FRM) Part I series of books. Developing the GARPFRM package is a 
+collaborative project between the University of Washington Computational 
+Finance & Risk Management Program and the Global Association of Risk 
+Professionals to develop R packages that facilitate the learning of risk 
+management concepts. The GARPFRM package provides a framework to 
+implement the topics presented in the Financial Risk Manager (FRM) Part 1 
+books. The user should be able to follow along in the books and using the 
+GARPFRM package and supporting packages.
+
+## Why an R Package for GARP FRM?
+* An outgrowth of running the UW AMATH MS-Degree Program in Computational 
+Finance and Risk Management 
+    + Successful extensive use of open source R for teaching and research
+
+* GARP FRM program involves no computation component 
+    + Learning is more effective if done in conjunction with computing
+    + Will be useful FRM Certificate follow-on risk management software
+    + Allows one to apply what they learned
+
+<-- this is the key idea here and we should go into greater detail -->
+
+## Growth of R in Industry
+* The Tiobe Index ranked R as the 18th most popular programming language in 
+January 2015, up from 44 in January 2014. 
+  + http://www.tiobe.com/index.php/content/paperinfo/tpci/index.html
+  + Other trends in progamming are modelling and big data. Here, MATLAB and 
+  R appear to be the market leaders. There is a realistic chance that they 
+  will enter the top 10 in 2015.
+
+* The CRAN package repository has 6258 packages as of 2015-02-01
+  + http://cran.r-project.org/web/packages/
+
+* Rapidly increasing use of open source R in finance industry
+  + For example DV Trading where Ross works
+  + Evident with R in Finance Conference
+  
+<!-- Add some charts here -->
+
+## Basic Introduction to R
+
+* What is R?
+* Installing R
+    + http://www.r-project.org
+* CRAN Task views in finance and econometrics
+  + http://cran.r-project.org/web/views/Finance.html
+  + http://cran.r-project.org/web/views/Econometrics.html
+
+<!--
+highlight key packages in this space
+* xts
+* PerformanceAnalytics
+* rugarch
+-->
+
+* Development environments
+    + RStudio, Eclipse, emacs, command line, etc.
+
+<!-- 
+include the R logo image  http://www.r-project.org/Rlogo.jpg
+talk about the R ecosystem with task views, packages, etc.
+-->
+
+## GARPFRM Package Overview
+
+* Authors and contributors
+* Installing the package
+  + install.packages("GARPFRM", repos="http://R-Forge.R-project.org")
+* Documentation of functions
+* Vignettes
+* Shiny Applications
+
+<!-- 
+explain the structure of the package 
+Maybe the authors and contributors should go in acknowledgements
+-->
+
+## GARPFRM Package Topics
+
+* Capital Asset Pricing Model
+* Delineating Efficient Portfolios
+* Estimating Volatilities and Correlations
+    + EWMA Model
+    + GARCH Model
+* VaR Models
+* Risk Measures (i.e. VaR, ES, etc.)
+* Option Pricing
+* Fixed Income Analysis
+
+<!-- 
+Brief overview of what is covered in each section
+What sections should we focus on for the remainder of the presentation?
+The following sections with examples should be the meat of the presentation
+-->
+
+## Delineating Efficient Portfolios
+<!-- Add code and text from vignette -->
+
+
+## Estimating Volatilities: EWMA Model
+* EWMA Model
+
+<!-- 
+High level review/explanation of EWMA model
+Code example and plot(s)
+EWMA model with hardcoded user specified lambda parameter
+EWMA model with analytical/computational approach to select the lambda
+-->
+
+## Estimating Volatilities: GARCH Model
+* GARCH Model
+
+<!-- 
+High level review/explanation of GARCH (1,1) model
+example of fitting GARCH model
+model fit and rolling forecast
+-->
+
+## Quantifying Volatility in VaR Models
+* GARCH Model VaR Estimates
+* Historical, Gaussian, Modified VaR
+<!-- 
+VaR backtests of a portfolio that test for VaR exceedances
+-->
+
+## Conclusion
+* Thanks and acknowledgements
+* Plans for continued development
+<!-- we should discuss the dev plans... GSOC, RA, etc. -->
+
+<!--
+Useful links we may want to include in an appendix slide
+http://www.r-project.org
+http://www.rstudio.com
+https://r-forge.r-project.org/projects/uwgarp/
+http://depts.washington.edu/compfin/content/welcome-computational-finance-risk-management
+http://www.garp.org
+http://cran.r-project.org/web/views/Econometrics.html
+http://cran.r-project.org/web/views/Finance.html
+http://www.rinfinance.com
+-->

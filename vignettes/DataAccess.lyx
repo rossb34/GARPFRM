@@ -1,0 +1,331 @@
+#LyX 2.0 created this file. For more info see http://www.lyx.org/
+\lyxformat 413
+\begin_document
+\begin_header
+\textclass article
+\begin_preamble
+% \VignetteIndexEntry{An Introduction to knitr}
+% \VignetteEngine{knitr::knitr}
+\end_preamble
+\use_default_options true
+\begin_modules
+knitr
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding default
+\fontencoding global
+\font_roman palatino
+\font_sans lmss
+\font_typewriter lmtt
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_amsmath 1
+\use_esint 1
+\use_mhchem 1
+\use_mathdots 1
+\cite_engine natbib_authoryear
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\use_refstyle 0
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2.5cm
+\topmargin 2.5cm
+\rightmargin 2.5cm
+\bottommargin 2.5cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Accessing Financial Data with R
+\end_layout
+
+\begin_layout Author
+Guy Yollin
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+Department of Applied Mathematics, University of Washington.
+ Email: 
+\begin_inset CommandInset href
+LatexCommand href
+target "gyollin@uw.edu"
+type "mailto:"
+
+\end_inset
+
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<setup, echo=FALSE>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+library('knitr')
+\end_layout
+
+\begin_layout Plain Layout
+
+opts_chunk$set(message=FALSE, fig.path='figures/', fig.align='center', fig.width=4,
+ fig.height=3, fig.keep='last', dev.args=list(pointsize=8))
+\end_layout
+
+\begin_layout Plain Layout
+
+options(width=80)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Abstract
+Financial data analysis with R requires access to financial data.
+ This document will demonstrate a variety of ways to to access free financial
+ data from the internet.
+ We will also discuss accessing financial data downloaded from some commercial
+ financial databases.
+\end_layout
+
+\begin_layout Section
+The 
+\family typewriter
+getSymbols
+\family default
+ function from the 
+\family typewriter
+quantmod
+\family default
+ package
+\end_layout
+
+\begin_layout Standard
+Probably the most useful function for retrieving financial data from the
+ internet is the 
+\family typewriter
+getSymbols
+\family default
+ function from the 
+\family typewriter
+quantmod
+\family default
+ package.
+ The function 
+\family typewriter
+getSymbols
+\family default
+ can download data from Yahoo Finance, Google Finance, the Federal Reserve's
+ FRED database, and Oanada.
+ The function can also read data from MySQL databases, 
+\family typewriter
+.csv
+\family default
+ files, and 
+\family typewriter
+.RData
+\family default
+ files.
+ 
+\end_layout
+
+\begin_layout Standard
+The following code chuck shows the arguments of the function.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+library(quantmod)
+\end_layout
+
+\begin_layout Plain Layout
+
+args(getSymbols)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The key arguments are summarized as follows:
+\end_layout
+
+\begin_layout Description
+Symbols character vector of ticker systems to download (this is the only
+ required argument)
+\end_layout
+
+\begin_layout Description
+src data source: yahoo (default), google, MySQL, FRED, csv, RData, and oanda
+\end_layout
+
+\begin_layout Subsection
+Downloading data from Yahoo Finance
+\end_layout
+
+\begin_layout Standard
+The following code chunk demonstrates how to download the S&P 500 index
+ data from Yahoo Finance, the default data source.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<results='hide',fig.width=4, fig.height=3>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+getSymbols('^GSPC')
+\end_layout
+
+\begin_layout Plain Layout
+
+chart_Series(GSPC)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Downloading data from the Federal Reserve's FRED database
+\end_layout
+
+\begin_layout Standard
+The Federal Reserve's FRED database (
+\begin_inset CommandInset href
+LatexCommand href
+target "http://research.stlouisfed.org/"
+
+\end_inset
+
+) contains more than 150,000 US and international financial and economic
+ time series.
+\end_layout
+
+\begin_layout Standard
+The following code chunk demonstrates how to download the 3-month Treasury
+ Bill rate from FRED.
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+<<fig.width=4, fig.height=3>>=
+\end_layout
+
+\begin_layout Plain Layout
+
+getSymbols('DGS3MO',src='FRED')
+\end_layout
+
+\begin_layout Plain Layout
+
+plot(DGS3MO,main="3-Month Treasury Constant Maturity Rate",cex.main=0.75)
+\end_layout
+
+\begin_layout Plain Layout
+
+@
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "DataAccess"
+options "jss"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
